@@ -5,117 +5,195 @@ import pandas as pd
 
 BASE_DIR = Path(__file__).resolve().parents[1]
 FEATURE_PATH = BASE_DIR / "models" / "feature_columns.pkl"
+
 feature_columns = joblib.load(FEATURE_PATH)
 
 
+# -----------------------------------------
+# Single Customer Prediction
+# -----------------------------------------
 def preprocess_input(form):
 
-    # Create dataframe with all features initialized to 0
+    row = {
+        "Gender": form["gender"],
+        "Senior Citizen": form["senior"],
+        "Partner": form["partner"],
+        "Dependents": form["dependents"],
+        "Tenure Months": float(form["tenure"]),
+        "Phone Service": form["phone"],
+        "Multiple Lines": form["multiple_lines"],
+        "Internet Service": form["internet"],
+        "Online Security": form["online_security"],
+        "Online Backup": form["online_backup"],
+        "Device Protection": form["device_protection"],
+        "Tech Support": form["tech_support"],
+        "Streaming TV": form["streaming_tv"],
+        "Streaming Movies": form["streaming_movies"],
+        "Contract": form["contract"],
+        "Paperless Billing": form["paperless"],
+        "Payment Method": form["payment"],
+        "Monthly Charges": float(form["monthly_charges"]),
+        "Total Charges": float(form["total_charges"]),
+    }
+
+    df = pd.DataFrame([row])
+
+    return preprocess_dataframe(df)
+
+
+# -----------------------------------------
+# Bulk Prediction
+# -----------------------------------------
+def preprocess_dataframe(df):
+
     data = pd.DataFrame(
-        [[0] * len(feature_columns)],
+        0,
+        index=df.index,
         columns=feature_columns
     )
 
-    # Numerical Features
-    data["Tenure Months"] = float(form["tenure"])
-    data["Monthly Charges"] = float(form["monthly_charges"])
-    data["Total Charges"] = float(form["total_charges"])
+    # Numerical Columns
+    
+    data["Monthly Charges"] = df["Monthly Charges"].astype(float)
+    
+    data["Total Charges"] = (pd.to_numeric(df["Total Charges"],errors="coerce"))
+
+    data["Total Charges"] = (data["Total Charges"].fillna(0))
 
     # Gender
-    if form["gender"] == "Male":
-        data["Gender_Male"] = 1
+    data.loc[df["Gender"] == "Male", "Gender_Male"] = 1
 
     # Senior Citizen
-    if form["senior"] == "Yes":
-        data["Senior Citizen_Yes"] = 1
+    data.loc[df["Senior Citizen"] == "Yes", "Senior Citizen_Yes"] = 1
 
     # Partner
-    if form["partner"] == "Yes":
-        data["Partner_Yes"] = 1
+    data.loc[df["Partner"] == "Yes", "Partner_Yes"] = 1
 
     # Dependents
-    if form["dependents"] == "Yes":
-        data["Dependents_Yes"] = 1
+    data.loc[df["Dependents"] == "Yes", "Dependents_Yes"] = 1
 
     # Phone Service
-    if form["phone"] == "Yes":
-        data["Phone Service_Yes"] = 1
+    data.loc[df["Phone Service"] == "Yes", "Phone Service_Yes"] = 1
 
     # Multiple Lines
-    if form["multiple_lines"] == "No phone service":
-        data["Multiple Lines_No phone service"] = 1
+    data.loc[
+        df["Multiple Lines"] == "No phone service",
+        "Multiple Lines_No phone service"
+    ] = 1
 
-    elif form["multiple_lines"] == "Yes":
-        data["Multiple Lines_Yes"] = 1
+    data.loc[
+        df["Multiple Lines"] == "Yes",
+        "Multiple Lines_Yes"
+    ] = 1
 
     # Internet Service
-    if form["internet"] == "Fiber optic":
-        data["Internet Service_Fiber optic"] = 1
+    data.loc[
+        df["Internet Service"] == "Fiber optic",
+        "Internet Service_Fiber optic"
+    ] = 1
 
-    elif form["internet"] == "No":
-        data["Internet Service_No"] = 1
+    data.loc[
+        df["Internet Service"] == "No",
+        "Internet Service_No"
+    ] = 1
 
     # Online Security
-    if form["online_security"] == "No internet service":
-        data["Online Security_No internet service"] = 1
+    data.loc[
+        df["Online Security"] == "Yes",
+        "Online Security_Yes"
+    ] = 1
 
-    elif form["online_security"] == "Yes":
-        data["Online Security_Yes"] = 1
+    data.loc[
+        df["Online Security"] == "No internet service",
+        "Online Security_No internet service"
+    ] = 1
 
     # Online Backup
-    if form["online_backup"] == "No internet service":
-        data["Online Backup_No internet service"] = 1
+    data.loc[
+        df["Online Backup"] == "Yes",
+        "Online Backup_Yes"
+    ] = 1
 
-    elif form["online_backup"] == "Yes":
-        data["Online Backup_Yes"] = 1
+    data.loc[
+        df["Online Backup"] == "No internet service",
+        "Online Backup_No internet service"
+    ] = 1
 
     # Device Protection
-    if form["device_protection"] == "No internet service":
-        data["Device Protection_No internet service"] = 1
+    data.loc[
+        df["Device Protection"] == "Yes",
+        "Device Protection_Yes"
+    ] = 1
 
-    elif form["device_protection"] == "Yes":
-        data["Device Protection_Yes"] = 1
+    data.loc[
+        df["Device Protection"] == "No internet service",
+        "Device Protection_No internet service"
+    ] = 1
 
     # Tech Support
-    if form["tech_support"] == "No internet service":
-        data["Tech Support_No internet service"] = 1
+    data.loc[
+        df["Tech Support"] == "Yes",
+        "Tech Support_Yes"
+    ] = 1
 
-    elif form["tech_support"] == "Yes":
-        data["Tech Support_Yes"] = 1
+    data.loc[
+        df["Tech Support"] == "No internet service",
+        "Tech Support_No internet service"
+    ] = 1
 
     # Streaming TV
-    if form["streaming_tv"] == "No internet service":
-        data["Streaming TV_No internet service"] = 1
+    data.loc[
+        df["Streaming TV"] == "Yes",
+        "Streaming TV_Yes"
+    ] = 1
 
-    elif form["streaming_tv"] == "Yes":
-        data["Streaming TV_Yes"] = 1
+    data.loc[
+        df["Streaming TV"] == "No internet service",
+        "Streaming TV_No internet service"
+    ] = 1
 
     # Streaming Movies
-    if form["streaming_movies"] == "No internet service":
-        data["Streaming Movies_No internet service"] = 1
+    data.loc[
+        df["Streaming Movies"] == "Yes",
+        "Streaming Movies_Yes"
+    ] = 1
 
-    elif form["streaming_movies"] == "Yes":
-        data["Streaming Movies_Yes"] = 1
+    data.loc[
+        df["Streaming Movies"] == "No internet service",
+        "Streaming Movies_No internet service"
+    ] = 1
 
     # Contract
-    if form["contract"] == "One year":
-        data["Contract_One year"] = 1
+    data.loc[
+        df["Contract"] == "One year",
+        "Contract_One year"
+    ] = 1
 
-    elif form["contract"] == "Two year":
-        data["Contract_Two year"] = 1
+    data.loc[
+        df["Contract"] == "Two year",
+        "Contract_Two year"
+    ] = 1
 
     # Paperless Billing
-    if form["paperless"] == "Yes":
-        data["Paperless Billing_Yes"] = 1
+    data.loc[
+        df["Paperless Billing"] == "Yes",
+        "Paperless Billing_Yes"
+    ] = 1
 
     # Payment Method
-    if form["payment"] == "Credit card (automatic)":
-        data["Payment Method_Credit card (automatic)"] = 1
+    data.loc[
+        df["Payment Method"] == "Credit card (automatic)",
+        "Payment Method_Credit card (automatic)"
+    ] = 1
 
-    elif form["payment"] == "Electronic check":
-        data["Payment Method_Electronic check"] = 1
+    data.loc[
+        df["Payment Method"] == "Electronic check",
+        "Payment Method_Electronic check"
+    ] = 1
 
-    elif form["payment"] == "Mailed check":
-        data["Payment Method_Mailed check"] = 1
+    data.loc[
+        df["Payment Method"] == "Mailed check",
+        "Payment Method_Mailed check"
+    ] = 1
 
     return data

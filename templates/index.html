@@ -5,9 +5,10 @@
 
     <meta charset="UTF-8">
 
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport"
+          content="width=device-width, initial-scale=1.0">
 
-    <title>Customer Churn Prediction Platform</title>
+    <title>Customer Retention Intelligence Platform</title>
 
     <link rel="stylesheet"
           href="{{ url_for('static', filename='style.css') }}">
@@ -21,232 +22,430 @@
 
 <div class="container">
 
-    <h1>
-        <i class="fa-solid fa-robot"></i>
-        Customer Retention Intelligence Platform
-    </h1>
+    <!-- ========================= -->
+    <!-- Header -->
+    <!-- ========================= -->
 
-    <form action="/predict" method="POST">
+    <header class="main-header">
 
-        <div class="section">
+        <div>
 
-            <h2>👤 Customer Information</h2>
+            <h1>
+
+                <i class="fa-solid fa-chart-line"></i>
+
+                RetainIQ
+
+            </h1>
+
+            <p>
+
+                AI Powered Customer Retention Intelligence Platform
+
+            </p>
+
+        </div>
+
+    </header>
+
+    <!-- ========================= -->
+    <!-- Navigation -->
+    <!-- ========================= -->
+
+    <section class="navigation">
+
+        <a href="/"
+           class="nav-card">
+
+            <i class="fa-solid fa-user"></i>
+
+            <h3>Single Prediction</h3>
+
+            <p>
+
+                Predict churn for one customer.
+
+            </p>
+
+        </a>
+
+        <a href="/bulk-prediction"
+           class="nav-card">
+
+            <i class="fa-solid fa-users"></i>
+
+            <h3>Bulk Prediction</h3>
+
+            <p>
+
+                Predict churn for an entire dataset.
+
+            </p>
+
+        </a>
+
+    </section>
+
+    <!-- ========================= -->
+    <!-- Hero -->
+    <!-- ========================= -->
+
+    <section class="hero">
+
+        <div class="hero-content">
+
+            <h2>
+
+                Customer Churn Prediction &
+                Retention Intelligence
+
+            </h2>
+
+            <p>
+
+                Predict customer churn using Machine Learning,
+                identify high-risk customers,
+                and generate intelligent retention recommendations.
+
+            </p>
+
+        </div>
+
+    </section>
+
+    <!-- ========================= -->
+    <!-- Prediction Form -->
+    <!-- ========================= -->
+
+    <form action="/predict"
+          method="POST">
+
+        <section class="form-section">
+
+            <h2>
+
+                Customer Information
+
+            </h2>
 
             <div class="grid">
 
-                <div>
+                <div class="input-group">
 
-                    <label>Gender</label>
+                    <label>
+
+                        Gender
+
+                    </label>
 
                     <select name="gender">
 
-                        <option>Male</option>
-                        <option>Female</option>
+                        <option>
+
+                            Male
+
+                        </option>
+
+                        <option>
+
+                            Female
+
+                        </option>
 
                     </select>
 
                 </div>
 
-                <div>
+                <div class="input-group">
 
-                    <label>Senior Citizen</label>
+                    <label>
+
+                        Senior Citizen
+
+                    </label>
 
                     <select name="senior">
 
-                        <option>No</option>
-                        <option>Yes</option>
+                        <option>
+
+                            No
+
+                        </option>
+
+                        <option>
+
+                            Yes
+
+                        </option>
 
                     </select>
 
                 </div>
 
-                <div>
+                <div class="input-group">
 
-                    <label>Partner</label>
+                    <label>
+
+                        Partner
+
+                    </label>
 
                     <select name="partner">
 
-                        <option>No</option>
-                        <option>Yes</option>
+                        <option>
+
+                            No
+
+                        </option>
+
+                        <option>
+
+                            Yes
+
+                        </option>
 
                     </select>
 
                 </div>
 
-                <div>
+                <div class="input-group">
 
-                    <label>Dependents</label>
+                    <label>
+
+                        Dependents
+
+                    </label>
 
                     <select name="dependents">
 
-                        <option>No</option>
-                        <option>Yes</option>
+                        <option>
+
+                            No
+
+                        </option>
+
+                        <option>
+
+                            Yes
+
+                        </option>
 
                     </select>
 
                 </div>
 
-                <div>
+                <div class="input-group">
 
-                    <label>Tenure Months</label>
+                    <label>
 
-                    <input type="number"
-                           name="tenure"
-                           required>
+                        Tenure Months
 
-                </div>
+                    </label>
 
-                <div>
+                    <input
 
-                    <label>Monthly Charges</label>
+                        type="number"
 
-                    <input type="number"
-                           step="0.01"
-                           name="monthly_charges"
-                           required>
+                        name="tenure"
+
+                        required>
 
                 </div>
 
-                <div>
+                <div class="input-group">
 
-                    <label>Total Charges</label>
+                    <label>
 
-                    <input type="number"
-                           step="0.01"
-                           name="total_charges"
-                           required>
+                        Monthly Charges
+
+                    </label>
+
+                    <input
+
+                        type="number"
+
+                        step="0.01"
+
+                        name="monthly_charges"
+
+                        required>
+
+                </div>
+
+                <div class="input-group">
+
+                    <label>
+
+                        Total Charges
+
+                    </label>
+
+                    <input
+
+                        type="number"
+
+                        step="0.01"
+
+                        name="total_charges"
+
+                        required>
 
                 </div>
 
             </div>
 
-        </div>
+        </section>
 
-        <div class="section">
+                <!-- ========================= -->
+        <!-- Services -->
+        <!-- ========================= -->
 
-            <h2>🌐 Services</h2>
+        <section class="form-section">
+
+            <h2>
+
+                Internet & Phone Services
+
+            </h2>
 
             <div class="grid">
 
-                <div>
+                <div class="input-group">
 
                     <label>Phone Service</label>
 
                     <select name="phone">
 
                         <option>Yes</option>
+
                         <option>No</option>
 
                     </select>
 
                 </div>
 
-                <div>
+                <div class="input-group">
 
                     <label>Multiple Lines</label>
 
                     <select name="multiple_lines">
 
                         <option>No</option>
+
                         <option>Yes</option>
+
                         <option>No phone service</option>
 
                     </select>
 
                 </div>
 
-                <div>
+                <div class="input-group">
 
                     <label>Internet Service</label>
 
                     <select name="internet">
 
                         <option>DSL</option>
+
                         <option>Fiber optic</option>
+
                         <option>No</option>
 
                     </select>
 
                 </div>
 
-                <div>
+                <div class="input-group">
 
                     <label>Online Security</label>
 
                     <select name="online_security">
 
                         <option>No</option>
+
                         <option>Yes</option>
+
                         <option>No internet service</option>
 
                     </select>
 
                 </div>
 
-                <div>
+                <div class="input-group">
 
                     <label>Online Backup</label>
 
                     <select name="online_backup">
 
                         <option>No</option>
+
                         <option>Yes</option>
+
                         <option>No internet service</option>
 
                     </select>
 
                 </div>
 
-                <div>
+                <div class="input-group">
 
                     <label>Device Protection</label>
 
                     <select name="device_protection">
 
                         <option>No</option>
+
                         <option>Yes</option>
+
                         <option>No internet service</option>
 
                     </select>
 
                 </div>
 
-                <div>
+                <div class="input-group">
 
                     <label>Tech Support</label>
 
                     <select name="tech_support">
 
                         <option>No</option>
+
                         <option>Yes</option>
+
                         <option>No internet service</option>
 
                     </select>
 
                 </div>
 
-                <div>
+                <div class="input-group">
 
                     <label>Streaming TV</label>
 
                     <select name="streaming_tv">
 
                         <option>No</option>
+
                         <option>Yes</option>
+
                         <option>No internet service</option>
 
                     </select>
 
                 </div>
 
-                <div>
+                <div class="input-group">
 
                     <label>Streaming Movies</label>
 
                     <select name="streaming_movies">
 
                         <option>No</option>
+
                         <option>Yes</option>
+
                         <option>No internet service</option>
 
                     </select>
@@ -255,51 +454,113 @@
 
             </div>
 
-        </div>
+        </section>
 
-        <div class="section">
+        <!-- ========================= -->
+        <!-- Billing -->
+        <!-- ========================= -->
 
-            <h2>💳 Billing</h2>
+        <section class="form-section">
+
+            <h2>
+
+                Billing Information
+
+            </h2>
 
             <div class="grid">
 
-                <div>
+                <div class="input-group">
 
-                    <label>Contract</label>
+                    <label>
+
+                        Contract
+
+                    </label>
 
                     <select name="contract">
 
-                        <option>Month-to-month</option>
-                        <option>One year</option>
-                        <option>Two year</option>
+                        <option>
+
+                            Month-to-month
+
+                        </option>
+
+                        <option>
+
+                            One year
+
+                        </option>
+
+                        <option>
+
+                            Two year
+
+                        </option>
 
                     </select>
 
                 </div>
 
-                <div>
+                <div class="input-group">
 
-                    <label>Paperless Billing</label>
+                    <label>
+
+                        Paperless Billing
+
+                    </label>
 
                     <select name="paperless">
 
-                        <option>Yes</option>
-                        <option>No</option>
+                        <option>
+
+                            Yes
+
+                        </option>
+
+                        <option>
+
+                            No
+
+                        </option>
 
                     </select>
 
                 </div>
 
-                <div>
+                <div class="input-group">
 
-                    <label>Payment Method</label>
+                    <label>
+
+                        Payment Method
+
+                    </label>
 
                     <select name="payment">
 
-                        <option>Electronic check</option>
-                        <option>Mailed check</option>
-                        <option>Bank transfer (automatic)</option>
-                        <option>Credit card (automatic)</option>
+                        <option>
+
+                            Electronic check
+
+                        </option>
+
+                        <option>
+
+                            Mailed check
+
+                        </option>
+
+                        <option>
+
+                            Bank transfer (automatic)
+
+                        </option>
+
+                        <option>
+
+                            Credit card (automatic)
+
+                        </option>
 
                     </select>
 
@@ -307,14 +568,214 @@
 
             </div>
 
-        </div>
+        </section>
 
-        <button type="submit">
-            <i class="fa-solid fa-magnifying-glass-chart"></i>
-            Predict Customer Churn
-        </button>
+        <!-- ========================= -->
+        <!-- Submit -->
+        <!-- ========================= -->
+
+        <section class="submit-section">
+
+            <button
+                type="submit"
+                class="predict-btn">
+
+                <i class="fa-solid fa-magnifying-glass-chart"></i>
+
+                Predict Customer Churn
+
+            </button>
+
+        </section>
 
     </form>
+
+    <!-- ========================= -->
+    <!-- Features -->
+    <!-- ========================= -->
+
+    <section class="features">
+
+        <div class="feature-card">
+
+            <i class="fa-solid fa-brain"></i>
+
+            <h3>
+
+                Machine Learning
+
+            </h3>
+
+            <p>
+
+                Predict customer churn using the trained Random Forest model.
+
+            </p>
+
+        </div>
+
+        <div class="feature-card">
+
+            <i class="fa-solid fa-triangle-exclamation"></i>
+
+            <h3>
+
+                Risk Analysis
+
+            </h3>
+
+            <p>
+
+                Automatically classify customers into High, Medium and Low risk.
+
+            </p>
+
+        </div>
+
+        <div class="feature-card">
+
+            <i class="fa-solid fa-lightbulb"></i>
+
+            <h3>
+
+                Smart Recommendations
+
+            </h3>
+
+            <p>
+
+                Get business recommendations to improve customer retention.
+
+            </p>
+
+        </div>
+
+    </section>
+
+        <!-- ========================= -->
+    <!-- Project Statistics -->
+    <!-- ========================= -->
+
+    <section class="statistics">
+
+        <h2>
+
+            Platform Highlights
+
+        </h2>
+
+        <div class="stats-grid">
+
+            <div class="stat-card">
+
+                <h3>Machine Learning</h3>
+
+                <p>Random Forest Classifier</p>
+
+            </div>
+
+            <div class="stat-card">
+
+                <h3>Prediction</h3>
+
+                <p>Customer Churn Probability</p>
+
+            </div>
+
+            <div class="stat-card">
+
+                <h3>Risk Levels</h3>
+
+                <p>High • Medium • Low</p>
+
+            </div>
+
+            <div class="stat-card">
+
+                <h3>Recommendations</h3>
+
+                <p>Business Retention Strategies</p>
+
+            </div>
+
+        </div>
+
+    </section>
+
+    <!-- ========================= -->
+    <!-- About Project -->
+    <!-- ========================= -->
+
+    <section class="about-project">
+
+        <h2>
+
+            About This Project
+
+        </h2>
+
+        <p>
+
+            This Customer Retention Intelligence Platform predicts customer
+            churn using Machine Learning and provides actionable business
+            recommendations to reduce customer attrition.
+
+        </p>
+
+        <p>
+
+            The application supports both Single Customer Prediction and
+            Bulk Customer Prediction through CSV upload, enabling telecom
+            companies to identify high-risk customers and take proactive
+            retention measures.
+
+        </p>
+
+    </section>
+
+    <!-- ========================= -->
+    <!-- Footer -->
+    <!-- ========================= -->
+
+    <footer class="footer">
+
+        <div class="footer-content">
+
+            <h3>
+
+                Customer Retention Intelligence Platform
+
+            </h3>
+
+            <p>
+
+                Final Year Data Science Project
+
+            </p>
+
+            <p>
+
+                Developed Using
+
+                <strong>
+
+                    Python • Flask • HTML • CSS • Machine Learning
+
+                </strong>
+
+            </p>
+
+            <hr>
+
+            <p>
+
+                © 2026 All Rights Reserved
+
+            </p>
+
+        </div>
+
+    </footer>
 
 </div>
 

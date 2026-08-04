@@ -1,12 +1,24 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 
 <head>
 
-    <title>Prediction Result</title>
+    <meta charset="UTF-8">
+
+    <meta name="viewport"
+          content="width=device-width, initial-scale=1.0">
+
+    <title>
+
+        Customer Churn Prediction Result
+
+    </title>
 
     <link rel="stylesheet"
           href="{{ url_for('static', filename='style.css') }}">
+
+    <link rel="stylesheet"
+          href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css">
 
 </head>
 
@@ -14,35 +26,254 @@
 
 <div class="container">
 
-<h1>Prediction Result</h1>
+    <!-- ====================================== -->
+    <!-- Header -->
+    <!-- ====================================== -->
 
-<div class="card">
+    <header class="main-header">
 
-<h2>{{ prediction }}</h2>
+        <h1>
 
-<h3>Probability</h3>
+            <i class="fa-solid fa-chart-line"></i>
 
-<p>{{ probability }}%</p>
+            Prediction Result
 
-<h3>Risk Level</h3>
+        </h1>
 
-<p>{{ risk }}</p>
+        <p>
 
-<h3>Recommended Actions</h3>
+            AI Powered Customer Churn Prediction &
+            Retention Intelligence
 
-<ul>
+        </p>
 
-{% for item in recommendation %}
+    </header>
 
-<li>{{ item }}</li>
+    <!-- ====================================== -->
+    <!-- Prediction Card -->
+    <!-- ====================================== -->
 
-{% endfor %}
+    <section class="statistics">
 
-</ul>
+        <div class="result-card">
 
-<a href="/">Predict Another Customer</a>
+            {% if prediction == "Customer Will Churn" %}
 
-</div>
+                <div class="result-icon">
+
+                    🔴
+
+                </div>
+
+            {% else %}
+
+                <div class="result-icon">
+
+                    🟢
+
+                </div>
+
+            {% endif %}
+
+            <h2>
+
+                {{ prediction }}
+
+            </h2>
+
+        </div>
+
+    </section>
+
+    <!-- ====================================== -->
+    <!-- KPI Cards -->
+    <!-- ====================================== -->
+
+    <section class="statistics">
+
+        <h2>
+
+            Prediction Summary
+
+        </h2>
+
+        <div class="stats-grid">
+
+            <div class="stat-card">
+
+                <h3>
+
+                    Churn Probability
+
+                </h3>
+
+                <p>
+
+                    {{ probability }}%
+
+                </p>
+
+            </div>
+
+            <div class="stat-card">
+
+                <h3>
+
+                    Risk Level
+
+                </h3>
+
+                <p>
+
+                    {% if risk == "High" %}
+
+                        <span class="high">
+
+                            High
+
+                        </span>
+
+                    {% elif risk == "Medium" %}
+
+                        <span class="medium">
+
+                            Medium
+
+                        </span>
+
+                    {% else %}
+
+                        <span class="low">
+
+                            Low
+
+                        </span>
+
+                    {% endif %}
+
+                </p>
+
+            </div>
+
+        </div>
+
+    </section>
+
+    <!-- ====================================== -->
+    <!-- Recommendations -->
+    <!-- ====================================== -->
+
+    <section class="statistics">
+
+        <h2>
+
+            Recommended Retention Actions
+
+        </h2>
+
+        <div class="recommendation-box">
+
+            <ul class="recommendation-list">
+
+                {% for item in recommendation %}
+
+                    <li>
+
+                        <i class="fa-solid fa-check"></i>
+
+                        {{ item }}
+
+                    </li>
+
+                {% endfor %}
+
+            </ul>
+
+        </div>
+
+    </section>
+
+    <!-- ====================================== -->
+    <!-- Actions -->
+    <!-- ====================================== -->
+
+    <section class="submit-section">
+
+        <a
+
+            href="/"
+
+            class="predict-btn"
+
+            style="text-decoration:none;display:inline-block;">
+
+            <i class="fa-solid fa-arrow-left"></i>
+
+            Predict Another Customer
+
+        </a>
+
+        &nbsp;&nbsp;
+
+        <a
+
+            href="/bulk-prediction"
+
+            class="download-btn"
+
+            style="text-decoration:none;display:inline-block;">
+
+            <i class="fa-solid fa-users"></i>
+
+            Bulk Prediction
+
+        </a>
+
+    </section>
+
+    <!-- ====================================== -->
+    <!-- Footer -->
+    <!-- ====================================== -->
+
+    <footer class="footer">
+
+        <div class="footer-content">
+
+            <h3>
+
+                Customer Retention Intelligence Platform
+
+            </h3>
+
+            <p>
+
+                Machine Learning Powered Decision Support System
+
+            </p>
+
+            <hr>
+
+            <p>
+
+                Built using
+
+                <strong>
+
+                    Python • Flask • Machine Learning • HTML • CSS
+
+                </strong>
+
+            </p>
+
+            <p>
+
+                © 2026 All Rights Reserved
+
+            </p>
+
+        </div>
+
+    </footer>
 
 </div>
 
