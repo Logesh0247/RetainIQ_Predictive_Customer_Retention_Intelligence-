@@ -120,9 +120,15 @@ def bulk_predict():
 
     low=result["low"],
 
-    avg_probability=result["avg_probability"],
+    churn_rate=result["churn_rate"],
+
+    retention_rate=result["retention_rate"],
 
     avg_monthly_charges=result["avg_monthly_charges"],
+    
+    revenue_at_risk=result["revenue_at_risk"],
+
+    critical_customers=result["critical_customers"],
 
     avg_tenure=result["avg_tenure"],
 

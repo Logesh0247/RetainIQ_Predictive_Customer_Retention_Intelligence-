@@ -30,10 +30,7 @@ def predict_bulk_customers(csv_path, output_folder):
     elif "customerID" in df.columns:
         customer_ids = df["customerID"]
     else:
-        customer_ids = pd.Series(
-            range(1, len(df) + 1),
-            name="CustomerID"
-        )
+        customer_ids = pd.Series(range(1, len(df) + 1),name="CustomerID")
 
     # -------------------------
     # Required columns
@@ -99,9 +96,25 @@ def predict_bulk_customers(csv_path, output_folder):
         get_risk(p)
         for p in probability]
 
-    result["Recommendation"] = [
-    get_recommendation(risk)
-    for risk in result["Risk"]]
+    recommendations = []
+
+    for index, row in df.iterrows():
+
+        risk = result.loc[index, "Risk"]
+
+        recommendations.append(
+
+            get_recommendation(
+
+                row,
+
+                risk
+
+            )
+
+        )
+
+    result["Recommendation"] = recommendations
 
     # -------------------------
     # KPIs
@@ -111,7 +124,9 @@ def predict_bulk_customers(csv_path, output_folder):
 
     churn = len(result[result["Prediction"] == "Customer Will Churn"])
 
-    stay = total - churn
+    stay = len(result[result["Prediction"] == "Customer Will Stay"])
+    
+    churn_rate = round((churn / total) * 100, 2)
 
     high = len(result[result["Risk"] == "High"])
 
@@ -123,9 +138,15 @@ def predict_bulk_customers(csv_path, output_folder):
 
     avg_monthly_charges = round(df["Monthly Charges"].mean(),2)
 
+    revenue_at_risk = round(df.loc[result["Prediction"] == "Customer Will Churn","Monthly Charges"].astype(float).sum(),2)
+
+    critical_customers = len(result[result["Probability"] >= 90])
+
     avg_tenure = round(df["Tenure Months"].mean(),2)
 
     top10 = result.sort_values(by="Probability",ascending=False).head(10)
+    
+    retention_rate = round((stay / total) * 100,2)
 
     # -------------------------
     # Save CSV
@@ -137,18 +158,20 @@ def predict_bulk_customers(csv_path, output_folder):
     # -------------------------
     # Return
     # -------------------------
+    
     return {
 
-    "table": result.to_dict(
-        orient="records"),
+    "table": result.to_dict(orient="records"),
 
-    "top10": top10.to_dict(
-        orient="records"
-    ),
+    "top10": top10.to_dict(orient="records"),
 
     "total": total,
 
     "churn": churn,
+
+    "churn_rate": churn_rate,
+
+    "retention_rate": retention_rate,
 
     "stay": stay,
 
@@ -159,10 +182,14 @@ def predict_bulk_customers(csv_path, output_folder):
     "low": low,
 
     "avg_probability": avg_probability,
-
+    
     "avg_monthly_charges": round(df["Monthly Charges"].astype(float).mean(),2),
+    
+    "revenue_at_risk": revenue_at_risk,
 
-    "avg_tenure": round(df["Tenure Months"].astype(float).mean(),1),
+    "critical_customers": critical_customers,
 
+    "avg_tenure": round(df["Tenure Months"].astype(float).mean(),2),
+    
     "download_file": output_file.name,
 }

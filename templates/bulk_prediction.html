@@ -195,7 +195,7 @@
 
                 <h3>
 
-                    Churn Customers
+                    Predicted Churn
 
                 </h3>
 
@@ -218,6 +218,70 @@
                 <p>
 
                     {{ stay }}
+
+                </p>
+
+            </div>
+
+            <div class="stat-card">
+
+                <h3>
+
+                    Churn Rate
+
+                </h3>
+
+                <p>
+
+                    {{ churn_rate }}%
+
+                </p>
+
+            </div>
+
+            <div class="stat-card">
+
+                <h3>
+
+                    Retention Rate
+
+                </h3>
+
+                <p>
+
+                    {{ retention_rate }}%
+
+                </p>
+
+            </div>
+
+            <div class="stat-card">
+
+                <h3>
+
+                    Revenue at Risk
+
+                </h3>
+
+                <p>
+
+                    ${{ revenue_at_risk }}
+
+                </p>
+
+            </div>
+
+            <div class="stat-card">
+
+                <h3>
+
+                    Critical Customers
+
+                </h3>
+
+                <p>
+
+                    {{ critical_customers }}
 
                 </p>
 
@@ -275,23 +339,7 @@
 
                 <h3>
 
-                    Average Probability
-
-                </h3>
-
-                <p>
-
-                    {{ avg_probability }}%
-
-                </p>
-
-            </div>
-
-            <div class="stat-card">
-
-                <h3>
-
-                    Average Monthly Charges
+                    Avg Monthly Charges
 
                 </h3>
 
@@ -307,7 +355,7 @@
 
                 <h3>
 
-                    Average Tenure
+                    Avg Tenure Months
 
                 </h3>
 
@@ -319,9 +367,84 @@
 
             </div>
 
+            
+
         </div>
 
     </section>
+
+<!-- ====================================== -->
+<!-- Executive Analytics -->
+<!-- ====================================== -->
+
+<section class="statistics">
+
+    <h2>
+
+        Executive Analytics
+
+    </h2>
+
+    <div class="analytics-grid">
+
+        <div class="chart-card">
+
+            <h3>
+
+                Churn Distribution
+
+            </h3>
+
+            <canvas id="churnChart"></canvas>
+
+        </div>
+
+        <div class="chart-card">
+
+            <h3>
+
+                Risk Distribution
+
+            </h3>
+
+            <canvas id="riskChart"></canvas>
+
+        </div>
+
+    </div>
+
+    <div class="analytics-grid">
+
+        <div class="chart-card">
+
+            <h3>
+
+                Revenue Summary
+
+            </h3>
+
+            <canvas id="revenueChart"></canvas>
+
+        </div>
+
+        <div class="chart-card">
+
+            <h3>
+
+                Customer Distribution
+
+            </h3>
+
+            <canvas id="customerChart"></canvas>
+
+        </div>
+
+    </div>
+
+</section>
+
+
+
 
         <!-- ====================================== -->
     <!-- Top 10 High Risk Customers -->
@@ -354,65 +477,91 @@
                 </thead>
 
                 <tbody>
-
-                {% for row in top10 %}
-
+                    
+                    {% for row in top10 %}
+                    
                     <tr>
-
+                        
                         <td>
-
+                            
                             {{ row.CustomerID }}
-
+                            
                         </td>
-
+                        
                         <td>
-
+                            
                             {{ row.Probability }}
-
+                            
                         </td>
-
+                        
                         <td>
-
+                            
                             {% if row.Risk == "High" %}
-
-                                <span class="high">
-
-                                    High
-
-                                </span>
-
+                            
+                            <span class="high">
+                                
+                                High
+                                
+                            </span>
+                            
                             {% elif row.Risk == "Medium" %}
-
-                                <span class="medium">
-
-                                    Medium
-
-                                </span>
-
+                            
+                            <span class="medium">
+                                
+                                Medium
+                                
+                            </span>
+                            
                             {% else %}
-
-                                <span class="low">
-
-                                    Low
-
-                                </span>
-
+                            
+                            <span class="low">
+                                
+                                Low
+                                
+                            </span>
+                            
                             {% endif %}
-
+                            
                         </td>
-
+                        
                     </tr>
-
-                {% endfor %}
-
+                    
+                    {% endfor %}
+                    
                 </tbody>
-
+                
             </table>
-
+            
         </div>
-
+        
     </section>
+    <!-- ====================================== -->
+    <!-- Search & Filter -->
+    <!-- ====================================== -->
+    
+    <div class="search-container">
+      
+        <h2>Search Customer</h2>
 
+        <form class="search-form" method="POST">
+
+            <input
+                type="text"
+                name="customer_id"
+                class="search-input"
+                placeholder="Enter Customer ID">
+
+            <button type="submit" class="search-btn">
+                Search
+            </button>
+
+            <a href="/bulk_predict" class="reset-btn">
+                Reset
+            </a>
+
+        </form>
+    </div>
+    
     <!-- ====================================== -->
     <!-- Download Button -->
     <!-- ====================================== -->
@@ -487,11 +636,11 @@
 
                 </thead>
 
-                <tbody>
+                <tbody id="predictionTable">
 
                 {% for row in table %}
 
-                    <tr>
+                    <tr class="customer-row">
 
                         <td>
 
@@ -566,7 +715,27 @@
                 </tbody>
 
             </table>
+                    <div class="pagination">
 
+                        <button id="prevPage">
+
+                            Previous
+
+                        </button>
+
+                        <span id="pageInfo">
+
+                            Page 1
+
+                        </span>
+
+                        <button id="nextPage">
+
+                            Next
+
+                        </button>
+
+                </div>
         </div>
 
     </section>

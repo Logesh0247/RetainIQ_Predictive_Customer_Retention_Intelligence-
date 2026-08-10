@@ -18,7 +18,46 @@ def predict_customer(form):
     probability = model.predict_proba(input_df)[0][1]
 
     risk = get_risk(probability)
-    recommendation = get_recommendation(risk)
+
+    customer = {
+
+        "Contract": form["Contract"],
+
+        "Monthly Charges": float(form["Monthly Charges"]),
+
+        "Tenure Months": float(form["Tenure Months"]),
+
+        "Internet Service": form["Internet Service"],
+
+        "Online Security": form["Online Security"],
+
+        "Online Backup": form["Online Backup"],
+
+        "Device Protection": form["Device Protection"],
+
+        "Tech Support": form["Tech Support"],
+
+        "Streaming TV": form["Streaming TV"],
+
+        "Streaming Movies": form["Streaming Movies"],
+
+        "Multiple Lines": form["Multiple Lines"],
+
+        "Payment Method": form["Payment Method"],
+
+        "Paperless Billing": form["Paperless Billing"],
+
+        "Partner": form["Partner"],
+
+        "Dependents": form["Dependents"],
+
+        "Senior Citizen": form["Senior Citizen"],
+
+        "Phone Service": form["Phone Service"]
+
+    }
+
+    recommendation = get_recommendation(customer, risk)
 
     result = "Customer Will Churn"
     if prediction == 0:
