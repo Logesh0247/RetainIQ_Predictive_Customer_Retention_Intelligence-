@@ -1,784 +1,752 @@
-<!DOCTYPE html>
-<html lang="en">
+{% extends "base.html" %}
 
-<head>
+{% block title %}
+RetainIQ | Customer Retention Intelligence
+{% endblock %}
 
-    <meta charset="UTF-8">
 
-    <meta name="viewport"
-          content="width=device-width, initial-scale=1.0">
+{% block content %}
 
-    <title>Customer Retention Intelligence Platform</title>
+<!-- =====================================================
+     HERO
+====================================================== -->
 
-    <link rel="stylesheet"
-          href="{{ url_for('static', filename='style.css') }}">
+<section class="hero">
 
-    <link rel="stylesheet"
-          href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css">
+    <div class="hero-content">
 
-</head>
+        <div class="hero-badge">
 
-<body>
+            <i class="fa-solid fa-sparkles"></i>
 
-<div class="container">
-
-    <!-- ========================= -->
-    <!-- Header -->
-    <!-- ========================= -->
-
-    <header class="main-header">
-
-        <div>
-
-            <h1>
-
-                <i class="fa-solid fa-chart-line"></i>
-
-                RetainIQ
-
-            </h1>
-
-            <p>
-
-                AI Powered Customer Retention Intelligence Platform
-
-            </p>
+            AI-DRIVEN CUSTOMER RETENTION
 
         </div>
 
-    </header>
 
-    <!-- ========================= -->
-    <!-- Navigation -->
-    <!-- ========================= -->
+        <h1>
 
-    <section class="navigation">
+            Predict Churn.
+            <span>Protect Customers.</span>
+            Grow Revenue.
 
-        <a href="/"
-           class="nav-card">
+        </h1>
 
-            <i class="fa-solid fa-user"></i>
 
-            <h3>Single Prediction</h3>
+        <p>
 
-            <p>
+            RetainIQ transforms customer data into actionable
+            retention intelligence. Predict which customers
+            are likely to churn, understand their risk and
+            take proactive action before valuable customers
+            leave.
 
-                Predict churn for one customer.
+        </p>
 
-            </p>
 
-        </a>
+        <div class="hero-actions">
 
-        <a href="/bulk-prediction"
-           class="nav-card">
+            <a
+                href="{{ url_for('single_prediction') }}"
+                class="predict-btn"
+            >
 
-            <i class="fa-solid fa-users"></i>
+                <i class="fa-solid fa-bullseye"></i>
 
-            <h3>Bulk Prediction</h3>
+                Start Prediction
 
-            <p>
+            </a>
 
-                Predict churn for an entire dataset.
 
-            </p>
+            <a
+                href="{{ url_for('bulk_prediction') }}"
+                class="secondary-btn"
+            >
 
-        </a>
+                <i class="fa-solid fa-cloud-arrow-up"></i>
 
-    </section>
+                Analyze Customer Base
 
-    <!-- ========================= -->
-    <!-- Hero -->
-    <!-- ========================= -->
-
-    <section class="hero">
-
-        <div class="hero-content">
-
-            <h2>
-
-                Customer Churn Prediction &
-                Retention Intelligence
-
-            </h2>
-
-            <p>
-
-                Predict customer churn using Machine Learning,
-                identify high-risk customers,
-                and generate intelligent retention recommendations.
-
-            </p>
+            </a>
 
         </div>
 
-    </section>
 
-    <!-- ========================= -->
-    <!-- Prediction Form -->
-    <!-- ========================= -->
+        <!-- Trust indicators -->
 
-    <form action="/predict"
-          method="POST">
+        <div class="hero-stats">
 
-        <section class="form-section">
+            <div class="hero-stat">
 
-            <h2>
+                <strong>
+                    ML
+                </strong>
 
-                Customer Information
+                <span>
+                    Powered Predictions
+                </span>
 
-            </h2>
+            </div>
 
-            <div class="grid">
 
-                <div class="input-group">
+            <div class="hero-stat-divider"></div>
 
-                    <label>
 
-                        Gender
+            <div class="hero-stat">
 
-                    </label>
+                <strong>
+                    AI
+                </strong>
 
-                    <select name="gender">
+                <span>
+                    Retention Intelligence
+                </span>
 
-                        <option>
+            </div>
 
-                            Male
 
-                        </option>
+            <div class="hero-stat-divider"></div>
 
-                        <option>
 
-                            Female
+            <div class="hero-stat">
 
-                        </option>
+                <strong>
+                    BI
+                </strong>
 
-                    </select>
+                <span>
+                    Business Analytics
+                </span>
 
-                </div>
+            </div>
 
-                <div class="input-group">
+        </div>
 
-                    <label>
+    </div>
 
-                        Senior Citizen
 
-                    </label>
+    <!-- Hero visual -->
 
-                    <select name="senior">
+    <div class="hero-visual">
 
-                        <option>
+        <div class="prediction-preview">
 
-                            No
+            <div class="preview-header">
 
-                        </option>
+                <div>
 
-                        <option>
+                    <span class="preview-label">
+                        CUSTOMER RISK
+                    </span>
 
-                            Yes
-
-                        </option>
-
-                    </select>
-
-                </div>
-
-                <div class="input-group">
-
-                    <label>
-
-                        Partner
-
-                    </label>
-
-                    <select name="partner">
-
-                        <option>
-
-                            No
-
-                        </option>
-
-                        <option>
-
-                            Yes
-
-                        </option>
-
-                    </select>
+                    <h3>
+                        Churn Intelligence
+                    </h3>
 
                 </div>
 
-                <div class="input-group">
+                <i class="fa-solid fa-shield-halved"></i>
 
-                    <label>
+            </div>
 
-                        Dependents
 
-                    </label>
+            <div class="risk-circle">
 
-                    <select name="dependents">
+                <div class="risk-circle-inner">
 
-                        <option>
+                    <strong>
+                        82%
+                    </strong>
 
-                            No
-
-                        </option>
-
-                        <option>
-
-                            Yes
-
-                        </option>
-
-                    </select>
+                    <span>
+                        Churn Risk
+                    </span>
 
                 </div>
 
-                <div class="input-group">
+            </div>
 
-                    <label>
 
-                        Tenure Months
+            <div class="preview-risk">
 
-                    </label>
+                <span class="risk-badge risk-high">
 
-                    <input
+                    <i class="fa-solid fa-circle"></i>
 
-                        type="number"
+                    HIGH RISK
 
-                        name="tenure"
+                </span>
 
-                        required>
+                <span>
+                    Immediate action recommended
+                </span>
+
+            </div>
+
+
+            <div class="preview-details">
+
+                <div>
+
+                    <span>
+                        Tenure
+                    </span>
+
+                    <strong>
+                        8 Months
+                    </strong>
 
                 </div>
 
-                <div class="input-group">
 
-                    <label>
+                <div>
 
+                    <span>
                         Monthly Charges
+                    </span>
 
-                    </label>
-
-                    <input
-
-                        type="number"
-
-                        step="0.01"
-
-                        name="monthly_charges"
-
-                        required>
+                    <strong>
+                        $89.90
+                    </strong>
 
                 </div>
 
-                <div class="input-group">
 
-                    <label>
+                <div>
 
-                        Total Charges
-
-                    </label>
-
-                    <input
-
-                        type="number"
-
-                        step="0.01"
-
-                        name="total_charges"
-
-                        required>
-
-                </div>
-
-            </div>
-
-        </section>
-
-                <!-- ========================= -->
-        <!-- Services -->
-        <!-- ========================= -->
-
-        <section class="form-section">
-
-            <h2>
-
-                Internet & Phone Services
-
-            </h2>
-
-            <div class="grid">
-
-                <div class="input-group">
-
-                    <label>Phone Service</label>
-
-                    <select name="phone">
-
-                        <option>Yes</option>
-
-                        <option>No</option>
-
-                    </select>
-
-                </div>
-
-                <div class="input-group">
-
-                    <label>Multiple Lines</label>
-
-                    <select name="multiple_lines">
-
-                        <option>No</option>
-
-                        <option>Yes</option>
-
-                        <option>No phone service</option>
-
-                    </select>
-
-                </div>
-
-                <div class="input-group">
-
-                    <label>Internet Service</label>
-
-                    <select name="internet">
-
-                        <option>DSL</option>
-
-                        <option>Fiber optic</option>
-
-                        <option>No</option>
-
-                    </select>
-
-                </div>
-
-                <div class="input-group">
-
-                    <label>Online Security</label>
-
-                    <select name="online_security">
-
-                        <option>No</option>
-
-                        <option>Yes</option>
-
-                        <option>No internet service</option>
-
-                    </select>
-
-                </div>
-
-                <div class="input-group">
-
-                    <label>Online Backup</label>
-
-                    <select name="online_backup">
-
-                        <option>No</option>
-
-                        <option>Yes</option>
-
-                        <option>No internet service</option>
-
-                    </select>
-
-                </div>
-
-                <div class="input-group">
-
-                    <label>Device Protection</label>
-
-                    <select name="device_protection">
-
-                        <option>No</option>
-
-                        <option>Yes</option>
-
-                        <option>No internet service</option>
-
-                    </select>
-
-                </div>
-
-                <div class="input-group">
-
-                    <label>Tech Support</label>
-
-                    <select name="tech_support">
-
-                        <option>No</option>
-
-                        <option>Yes</option>
-
-                        <option>No internet service</option>
-
-                    </select>
-
-                </div>
-
-                <div class="input-group">
-
-                    <label>Streaming TV</label>
-
-                    <select name="streaming_tv">
-
-                        <option>No</option>
-
-                        <option>Yes</option>
-
-                        <option>No internet service</option>
-
-                    </select>
-
-                </div>
-
-                <div class="input-group">
-
-                    <label>Streaming Movies</label>
-
-                    <select name="streaming_movies">
-
-                        <option>No</option>
-
-                        <option>Yes</option>
-
-                        <option>No internet service</option>
-
-                    </select>
-
-                </div>
-
-            </div>
-
-        </section>
-
-        <!-- ========================= -->
-        <!-- Billing -->
-        <!-- ========================= -->
-
-        <section class="form-section">
-
-            <h2>
-
-                Billing Information
-
-            </h2>
-
-            <div class="grid">
-
-                <div class="input-group">
-
-                    <label>
-
+                    <span>
                         Contract
+                    </span>
 
-                    </label>
-
-                    <select name="contract">
-
-                        <option>
-
-                            Month-to-month
-
-                        </option>
-
-                        <option>
-
-                            One year
-
-                        </option>
-
-                        <option>
-
-                            Two year
-
-                        </option>
-
-                    </select>
-
-                </div>
-
-                <div class="input-group">
-
-                    <label>
-
-                        Paperless Billing
-
-                    </label>
-
-                    <select name="paperless">
-
-                        <option>
-
-                            Yes
-
-                        </option>
-
-                        <option>
-
-                            No
-
-                        </option>
-
-                    </select>
-
-                </div>
-
-                <div class="input-group">
-
-                    <label>
-
-                        Payment Method
-
-                    </label>
-
-                    <select name="payment">
-
-                        <option>
-
-                            Electronic check
-
-                        </option>
-
-                        <option>
-
-                            Mailed check
-
-                        </option>
-
-                        <option>
-
-                            Bank transfer (automatic)
-
-                        </option>
-
-                        <option>
-
-                            Credit card (automatic)
-
-                        </option>
-
-                    </select>
+                    <strong>
+                        Month-to-Month
+                    </strong>
 
                 </div>
 
             </div>
 
-        </section>
 
-        <!-- ========================= -->
-        <!-- Submit -->
-        <!-- ========================= -->
+            <div class="preview-recommendation">
 
-        <section class="submit-section">
+                <i class="fa-solid fa-lightbulb"></i>
 
-            <button
-                type="submit"
-                class="predict-btn">
+                <div>
 
-                <i class="fa-solid fa-magnifying-glass-chart"></i>
+                    <strong>
+                        Retention Recommendation
+                    </strong>
 
-                Predict Customer Churn
+                    <p>
+                        Offer a long-term contract incentive
+                        and proactive support.
+                    </p>
 
-            </button>
+                </div>
 
-        </section>
+            </div>
 
-    </form>
+        </div>
 
-    <!-- ========================= -->
-    <!-- Features -->
-    <!-- ========================= -->
+    </div>
 
-    <section class="features">
+</section>
 
-        <div class="feature-card">
+
+<!-- =====================================================
+     PLATFORM VALUE
+====================================================== -->
+
+<section class="section">
+
+    <div class="section-heading">
+
+        <span>
+            ONE PLATFORM
+        </span>
+
+        <h2>
+            From Prediction to Retention Action
+        </h2>
+
+        <p>
+            RetainIQ connects machine learning with
+            practical business decision-making.
+        </p>
+
+    </div>
+
+
+    <div class="feature-grid">
+
+
+        <!-- Prediction -->
+
+        <article class="feature-card">
+
+            <div class="feature-icon">
+
+                <i class="fa-solid fa-brain"></i>
+
+            </div>
+
+            <h3>
+                Predict Churn
+            </h3>
+
+            <p>
+
+                Use the trained machine-learning model to
+                estimate the probability that a customer
+                will churn.
+
+            </p>
+
+            <a href="{{ url_for('single_prediction') }}">
+
+                Make a prediction
+
+                <i class="fa-solid fa-arrow-right"></i>
+
+            </a>
+
+        </article>
+
+
+        <!-- Risk -->
+
+        <article class="feature-card">
+
+            <div class="feature-icon">
+
+                <i class="fa-solid fa-gauge-high"></i>
+
+            </div>
+
+            <h3>
+                Understand Risk
+            </h3>
+
+            <p>
+
+                Convert churn probabilities into clear
+                High, Medium and Low risk segments for
+                faster decision-making.
+
+            </p>
+
+            <a href="{{ url_for('dashboard') }}">
+
+                Explore risk intelligence
+
+                <i class="fa-solid fa-arrow-right"></i>
+
+            </a>
+
+        </article>
+
+
+        <!-- Retention -->
+
+        <article class="feature-card">
+
+            <div class="feature-icon">
+
+                <i class="fa-solid fa-hand-holding-heart"></i>
+
+            </div>
+
+            <h3>
+                Retain Customers
+            </h3>
+
+            <p>
+
+                Generate personalized retention actions
+                based on customer characteristics and
+                churn drivers.
+
+            </p>
+
+            <a href="{{ url_for('single_prediction') }}">
+
+                View recommendations
+
+                <i class="fa-solid fa-arrow-right"></i>
+
+            </a>
+
+        </article>
+
+
+        <!-- Bulk -->
+
+        <article class="feature-card">
+
+            <div class="feature-icon">
+
+                <i class="fa-solid fa-layer-group"></i>
+
+            </div>
+
+            <h3>
+                Analyze at Scale
+            </h3>
+
+            <p>
+
+                Process an entire customer dataset through
+                bulk prediction and identify your highest
+                priority customers.
+
+            </p>
+
+            <a href="{{ url_for('bulk_prediction') }}">
+
+                Analyze customers
+
+                <i class="fa-solid fa-arrow-right"></i>
+
+            </a>
+
+        </article>
+
+
+        <!-- BI -->
+
+        <article class="feature-card">
+
+            <div class="feature-icon">
+
+                <i class="fa-solid fa-chart-column"></i>
+
+            </div>
+
+            <h3>
+                Business Intelligence
+            </h3>
+
+            <p>
+
+                Combine predictive insights with
+                interactive business intelligence through
+                the Power BI environment.
+
+            </p>
+
+            <a href="{{ url_for('powerbi') }}">
+
+                Open Power BI
+
+                <i class="fa-solid fa-arrow-right"></i>
+
+            </a>
+
+        </article>
+
+
+        <!-- Reports -->
+
+        <article class="feature-card">
+
+            <div class="feature-icon">
+
+                <i class="fa-solid fa-file-chart-column"></i>
+
+            </div>
+
+            <h3>
+                Executive Reporting
+            </h3>
+
+            <p>
+
+                Turn customer churn predictions into
+                decision-ready reports for business
+                stakeholders.
+
+            </p>
+
+            <a href="{{ url_for('reports') }}">
+
+                Explore reports
+
+                <i class="fa-solid fa-arrow-right"></i>
+
+            </a>
+
+        </article>
+
+    </div>
+
+</section>
+
+
+<!-- =====================================================
+     WORKFLOW
+====================================================== -->
+
+<section class="section workflow-section">
+
+    <div class="section-heading">
+
+        <span>
+            INTELLIGENCE PIPELINE
+        </span>
+
+        <h2>
+            How RetainIQ Works
+        </h2>
+
+        <p>
+            A simple path from raw customer data to
+            proactive retention.
+        </p>
+
+    </div>
+
+
+    <div class="workflow">
+
+
+        <div class="workflow-step">
+
+            <div class="workflow-number">
+                01
+            </div>
+
+            <i class="fa-solid fa-database"></i>
+
+            <h3>
+                Customer Data
+            </h3>
+
+            <p>
+                Customer attributes and behavioral
+                information enter the platform.
+            </p>
+
+        </div>
+
+
+        <div class="workflow-line">
+
+            <i class="fa-solid fa-chevron-right"></i>
+
+        </div>
+
+
+        <div class="workflow-step">
+
+            <div class="workflow-number">
+                02
+            </div>
+
+            <i class="fa-solid fa-microchip"></i>
+
+            <h3>
+                ML Prediction
+            </h3>
+
+            <p>
+                The trained model calculates individual
+                churn probability.
+            </p>
+
+        </div>
+
+
+        <div class="workflow-line">
+
+            <i class="fa-solid fa-chevron-right"></i>
+
+        </div>
+
+
+        <div class="workflow-step">
+
+            <div class="workflow-number">
+                03
+            </div>
+
+            <i class="fa-solid fa-chart-pie"></i>
+
+            <h3>
+                Risk Intelligence
+            </h3>
+
+            <p>
+                Customers are classified according to
+                their predicted risk.
+            </p>
+
+        </div>
+
+
+        <div class="workflow-line">
+
+            <i class="fa-solid fa-chevron-right"></i>
+
+        </div>
+
+
+        <div class="workflow-step">
+
+            <div class="workflow-number">
+                04
+            </div>
+
+            <i class="fa-solid fa-bullseye"></i>
+
+            <h3>
+                Retention Action
+            </h3>
+
+            <p>
+                Personalized recommendations help teams
+                prioritize intervention.
+            </p>
+
+        </div>
+
+    </div>
+
+</section>
+
+
+<!-- =====================================================
+     TECHNOLOGY STACK
+====================================================== -->
+
+<section class="section">
+
+    <div class="section-heading">
+
+        <span>
+            TECHNOLOGY STACK
+        </span>
+
+        <h2>
+            Built for Data-Driven Decision Making
+        </h2>
+
+    </div>
+
+
+    <div class="technology-grid">
+
+        <div class="technology-card">
+
+            <i class="fa-brands fa-python"></i>
+
+            <span>
+                Python
+            </span>
+
+        </div>
+
+
+        <div class="technology-card">
+
+            <i class="fa-solid fa-table-cells-large"></i>
+
+            <span>
+                Pandas
+            </span>
+
+        </div>
+
+
+        <div class="technology-card">
 
             <i class="fa-solid fa-brain"></i>
 
-            <h3>
-
-                Machine Learning
-
-            </h3>
-
-            <p>
-
-                Predict customer churn using the trained Random Forest model.
-
-            </p>
+            <span>
+                Scikit-Learn
+            </span>
 
         </div>
 
-        <div class="feature-card">
 
-            <i class="fa-solid fa-triangle-exclamation"></i>
+        <div class="technology-card">
 
-            <h3>
+            <i class="fa-solid fa-server"></i>
 
-                Risk Analysis
-
-            </h3>
-
-            <p>
-
-                Automatically classify customers into High, Medium and Low risk.
-
-            </p>
+            <span>
+                Flask
+            </span>
 
         </div>
 
-        <div class="feature-card">
 
-            <i class="fa-solid fa-lightbulb"></i>
+        <div class="technology-card">
 
-            <h3>
+            <i class="fa-solid fa-chart-column"></i>
 
-                Smart Recommendations
-
-            </h3>
-
-            <p>
-
-                Get business recommendations to improve customer retention.
-
-            </p>
+            <span>
+                Power BI
+            </span>
 
         </div>
 
-    </section>
+    </div>
 
-        <!-- ========================= -->
-    <!-- Project Statistics -->
-    <!-- ========================= -->
+</section>
 
-    <section class="statistics">
 
-        <h2>
+<!-- =====================================================
+     FINAL CTA
+====================================================== -->
 
-            Platform Highlights
+<section class="cta-section">
 
-        </h2>
+    <div class="cta-icon">
 
-        <div class="stats-grid">
+        <i class="fa-solid fa-rocket"></i>
 
-            <div class="stat-card">
+    </div>
 
-                <h3>Machine Learning</h3>
 
-                <p>Random Forest Classifier</p>
+    <h2>
+        Turn churn predictions into retention decisions.
+    </h2>
 
-            </div>
 
-            <div class="stat-card">
+    <p>
 
-                <h3>Prediction</h3>
+        Start with one customer or analyze your complete
+        customer base with RetainIQ.
 
-                <p>Customer Churn Probability</p>
+    </p>
 
-            </div>
 
-            <div class="stat-card">
+    <div class="hero-actions cta-actions">
 
-                <h3>Risk Levels</h3>
+        <a
+            href="{{ url_for('single_prediction') }}"
+            class="predict-btn"
+        >
 
-                <p>High • Medium • Low</p>
+            <i class="fa-solid fa-bullseye"></i>
 
-            </div>
+            Start Single Prediction
 
-            <div class="stat-card">
+        </a>
 
-                <h3>Recommendations</h3>
 
-                <p>Business Retention Strategies</p>
+        <a
+            href="{{ url_for('bulk_prediction') }}"
+            class="secondary-btn"
+        >
 
-            </div>
+            <i class="fa-solid fa-users"></i>
 
-        </div>
+            Analyze Customer Base
 
-    </section>
+        </a>
 
-    <!-- ========================= -->
-    <!-- About Project -->
-    <!-- ========================= -->
+    </div>
 
-    <section class="about-project">
+</section>
 
-        <h2>
-
-            About This Project
-
-        </h2>
-
-        <p>
-
-            This Customer Retention Intelligence Platform predicts customer
-            churn using Machine Learning and provides actionable business
-            recommendations to reduce customer attrition.
-
-        </p>
-
-        <p>
-
-            The application supports both Single Customer Prediction and
-            Bulk Customer Prediction through CSV upload, enabling telecom
-            companies to identify high-risk customers and take proactive
-            retention measures.
-
-        </p>
-
-    </section>
-
-    <!-- ========================= -->
-    <!-- Footer -->
-    <!-- ========================= -->
-
-    <footer class="footer">
-
-        <div class="footer-content">
-
-            <h3>
-
-                Customer Retention Intelligence Platform
-
-            </h3>
-
-            <p>
-
-                Final Year Data Science Project
-
-            </p>
-
-            <p>
-
-                Developed Using
-
-                <strong>
-
-                    Python • Flask • HTML • CSS • Machine Learning
-
-                </strong>
-
-            </p>
-
-            <hr>
-
-            <p>
-
-                © 2026 All Rights Reserved
-
-            </p>
-
-        </div>
-
-    </footer>
-
-</div>
-
-</body>
-
-</html>
+{% endblock %}

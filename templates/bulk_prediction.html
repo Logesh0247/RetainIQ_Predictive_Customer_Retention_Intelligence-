@@ -1,892 +1,1190 @@
-<!DOCTYPE html>
-<html lang="en">
+{% extends "base.html" %}
 
-<head>
+{% block title %}Bulk Prediction | RetainIQ{% endblock %}
 
-    <meta charset="UTF-8">
+{% block content %}
 
-    <meta name="viewport"
-          content="width=device-width, initial-scale=1.0">
+<div class="bulk-page">
 
-    <title>
+    <!-- =====================================================
+         PAGE HEADER
+    ====================================================== -->
 
-        Bulk Customer Churn Prediction
+    <section class="page-hero">
 
-    </title>
+        <span>BULK CUSTOMER ANALYSIS</span>
 
-    <link rel="stylesheet"
-          href="{{ url_for('static', filename='style.css') }}">
+        <h1>Analyze Your Customer Base</h1>
 
-    <link rel="stylesheet"
-          href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css">
-
-</head>
-
-<body>
-
-<div class="container">
-
-    <!-- ====================================== -->
-    <!-- Header -->
-    <!-- ====================================== -->
-
-    <header class="main-header">
-
-        <div>
-
-            <h1>
-
-                <i class="fa-solid fa-users"></i>
-
-                Bulk Customer Churn Prediction
-
-            </h1>
-
-            <p>
-
-                Upload your customer dataset and predict churn
-                probability for every customer in a single click.
-
-            </p>
-
-        </div>
-
-    </header>
-
-    <!-- ====================================== -->
-    <!-- Navigation -->
-    <!-- ====================================== -->
-
-    <section class="navigation">
-
-        <a href="/"
-           class="nav-card">
-
-            <i class="fa-solid fa-user"></i>
-
-            <h3>
-
-                Single Prediction
-
-            </h3>
-
-        </a>
-
-        <a href="/bulk-prediction"
-           class="nav-card active">
-
-            <i class="fa-solid fa-users"></i>
-
-            <h3>
-
-                Bulk Prediction
-
-            </h3>
-
-        </a>
+        <p>
+            Upload your customer dataset and identify churn
+            risk across your entire customer base.
+        </p>
 
     </section>
 
-    <!-- ====================================== -->
-    <!-- Upload -->
-    <!-- ====================================== -->
 
-    <section class="form-section">
+    <!-- =====================================================
+         ERROR
+    ====================================================== -->
 
-        <h2>
+    {% if error %}
 
-            Upload Dataset
+    <div class="alert alert-error">
 
-        </h2>
+        <i class="fa-solid fa-circle-exclamation"></i>
+
+        <span>{{ error }}</span>
+
+    </div>
+
+    {% endif %}
+
+
+    <!-- =====================================================
+         UPLOAD
+    ====================================================== -->
+
+    <section class="bulk-upload-card">
+
+        <div class="bulk-upload-content">
+
+            <div class="bulk-upload-icon">
+                <i class="fa-solid fa-cloud-arrow-up"></i>
+            </div>
+
+            <div>
+
+                <h2>Upload Customer Dataset</h2>
+
+                <p>
+                    Upload a CSV file containing customer
+                    information for bulk churn prediction.
+                </p>
+
+            </div>
+
+        </div>
+
 
         <form
-
-            action="/bulk-predict"
-
+            action="{{ url_for('bulk_predict') }}"
             method="POST"
+            enctype="multipart/form-data"
+            class="bulk-upload-form"
+        >
 
-            enctype="multipart/form-data">
+            <div class="file-drop-zone">
 
-            <div class="input-group">
+                <i class="fa-solid fa-file-csv"></i>
 
-                <label>
+                <h3>Choose CSV File</h3>
 
-                    Select CSV File
+                <p>Supported format: CSV</p>
+
+                <label
+                    for="csv_file"
+                    class="file-select-btn"
+                >
+
+                    <i class="fa-solid fa-folder-open"></i>
+
+                    Browse File
 
                 </label>
 
                 <input
-
                     type="file"
-
+                    id="csv_file"
                     name="file"
-
                     accept=".csv"
+                    required
+                    hidden
+                >
 
-                    required>
+                <div class="selected-file">
+                    Select a CSV file to continue
+                </div>
 
             </div>
 
-            <br>
 
-            <button
+            <div class="bulk-upload-actions">
 
-                class="predict-btn"
+                <button
+                    type="submit"
+                    class="primary-btn"
+                >
 
-                type="submit">
+                    <i class="fa-solid fa-microchip"></i>
 
-                <i class="fa-solid fa-cloud-arrow-up"></i>
+                    Run Bulk Prediction
 
-                Predict All Customers
+                </button>
 
-            </button>
+            </div>
 
         </form>
 
     </section>
 
-    {% if error %}
 
-    <section class="form-section">
-
-        <div class="error-box">
-
-            {{ error }}
-
-        </div>
-
-    </section>
-
-    {% endif %}
+    <!-- =====================================================
+         RESULTS
+    ====================================================== -->
 
     {% if table %}
 
-    <!-- ====================================== -->
-    <!-- Dashboard -->
-    <!-- ====================================== -->
+    <section class="bulk-results-section">
 
-    <section class="statistics">
 
-        <h2>
+        <!-- =================================================
+             RESULTS HEADER
+        ================================================== -->
 
-            Executive Dashboard
+        <div class="results-header">
 
-        </h2>
+            <div>
 
-        <div class="stats-grid">
+                <span>PREDICTION RESULTS</span>
 
-            <div class="stat-card">
-
-                <h3>
-
-                    Total Customers
-
-                </h3>
+                <h2>Customer Risk Overview</h2>
 
                 <p>
-
-                    {{ total }}
-
+                    Summary of churn predictions generated
+                    from the uploaded customer dataset.
                 </p>
 
             </div>
 
-            <div class="stat-card">
 
-                <h3>
+            {% if download_file %}
 
-                    Predicted Churn
+            <div class="results-actions">
 
-                </h3>
+                <a
+                    href="{{ url_for('download_file', filename=download_file) }}"
+                    class="secondary-btn"
+                >
 
-                <p>
+                    <i class="fa-solid fa-download"></i>
 
-                    {{ churn }}
+                    Download Results
 
-                </p>
-
-            </div>
-
-            <div class="stat-card">
-
-                <h3>
-
-                    Stay Customers
-
-                </h3>
-
-                <p>
-
-                    {{ stay }}
-
-                </p>
+                </a>
 
             </div>
 
-            <div class="stat-card">
-
-                <h3>
-
-                    Churn Rate
-
-                </h3>
-
-                <p>
-
-                    {{ churn_rate }}%
-
-                </p>
-
-            </div>
-
-            <div class="stat-card">
-
-                <h3>
-
-                    Retention Rate
-
-                </h3>
-
-                <p>
-
-                    {{ retention_rate }}%
-
-                </p>
-
-            </div>
-
-            <div class="stat-card">
-
-                <h3>
-
-                    Revenue at Risk
-
-                </h3>
-
-                <p>
-
-                    ${{ revenue_at_risk }}
-
-                </p>
-
-            </div>
-
-            <div class="stat-card">
-
-                <h3>
-
-                    Critical Customers
-
-                </h3>
-
-                <p>
-
-                    {{ critical_customers }}
-
-                </p>
-
-            </div>
-
-            <div class="stat-card">
-
-                <h3>
-
-                    High Risk
-
-                </h3>
-
-                <p>
-
-                    {{ high }}
-
-                </p>
-
-            </div>
-
-            <div class="stat-card">
-
-                <h3>
-
-                    Medium Risk
-
-                </h3>
-
-                <p>
-
-                    {{ medium }}
-
-                </p>
-
-            </div>
-
-            <div class="stat-card">
-
-                <h3>
-
-                    Low Risk
-
-                </h3>
-
-                <p>
-
-                    {{ low }}
-
-                </p>
-
-            </div>
-
-            <div class="stat-card">
-
-                <h3>
-
-                    Avg Monthly Charges
-
-                </h3>
-
-                <p>
-
-                    ${{ avg_monthly_charges }}
-
-                </p>
-
-            </div>
-
-            <div class="stat-card">
-
-                <h3>
-
-                    Avg Tenure Months
-
-                </h3>
-
-                <p>
-
-                    {{ avg_tenure }} Months
-
-                </p>
-
-            </div>
-
-            
+            {% endif %}
 
         </div>
 
-    </section>
 
-<!-- ====================================== -->
-<!-- Executive Analytics -->
-<!-- ====================================== -->
+        <!-- =================================================
+             KPI CARDS
+        ================================================== -->
 
-<section class="statistics">
+        <div class="bulk-kpi-grid">
 
-    <h2>
 
-        Executive Analytics
+            <!-- TOTAL -->
 
-    </h2>
+            <div class="bulk-kpi-card kpi-blue">
 
-    <div class="analytics-grid">
+                <div class="kpi-icon">
+                    <i class="fa-solid fa-users"></i>
+                </div>
 
-        <div class="chart-card">
+                <div class="kpi-information">
 
-            <h3>
+                    <span>Total Customers</span>
 
-                Churn Distribution
+                    <strong>
+                        {{ total | default(0) }}
+                    </strong>
 
-            </h3>
+                </div>
 
-            <canvas id="churnChart"></canvas>
+            </div>
+
+
+            <!-- CHURN -->
+
+            <div class="bulk-kpi-card kpi-red">
+
+                <div class="kpi-icon">
+                    <i class="fa-solid fa-user-xmark"></i>
+                </div>
+
+                <div class="kpi-information">
+
+                    <span>Predicted Churn</span>
+
+                    <strong>
+                        {{ churn | default(0) }}
+                    </strong>
+
+                </div>
+
+                <div class="kpi-subtext">
+                    Customers at risk
+                </div>
+
+            </div>
+
+
+            <!-- STAY -->
+
+            <div class="bulk-kpi-card kpi-green">
+
+                <div class="kpi-icon">
+                    <i class="fa-solid fa-user-check"></i>
+                </div>
+
+                <div class="kpi-information">
+
+                    <span>Predicted Stay</span>
+
+                    <strong>
+                        {{ stay | default(0) }}
+                    </strong>
+
+                </div>
+
+                <div class="kpi-subtext">
+                    Customers likely to stay
+                </div>
+
+            </div>
+
+
+            <!-- CHURN RATE -->
+
+            <div class="bulk-kpi-card kpi-orange">
+
+                <div class="kpi-icon">
+                    <i class="fa-solid fa-chart-line"></i>
+                </div>
+
+                <div class="kpi-information">
+
+                    <span>Churn Rate</span>
+
+                    <strong>
+                        {{ churn_rate | default(0) }}%
+                    </strong>
+
+                </div>
+
+            </div>
 
         </div>
 
-        <div class="chart-card">
 
-            <h3>
+        <!-- =================================================
+             BUSINESS KPIs
+        ================================================== -->
 
-                Risk Distribution
+        <div class="bulk-kpi-grid">
 
-            </h3>
 
-            <canvas id="riskChart"></canvas>
+            <!-- RETENTION -->
+
+            <div class="bulk-kpi-card kpi-green">
+
+                <div class="kpi-icon">
+                    <i class="fa-solid fa-shield-heart"></i>
+                </div>
+
+                <div class="kpi-information">
+
+                    <span>Retention Rate</span>
+
+                    <strong>
+                        {{ retention_rate | default(0) }}%
+                    </strong>
+
+                </div>
+
+            </div>
+
+
+            <!-- MONTHLY CHARGES -->
+
+            <div class="bulk-kpi-card kpi-blue">
+
+                <div class="kpi-icon">
+                    <i class="fa-solid fa-dollar-sign"></i>
+                </div>
+
+                <div class="kpi-information">
+
+                    <span>Avg Monthly Charges</span>
+
+                    <strong>
+                        ${{ avg_monthly_charges | default(0) }}
+                    </strong>
+
+                </div>
+
+            </div>
+
+
+            <!-- TENURE -->
+
+            <div class="bulk-kpi-card kpi-blue">
+
+                <div class="kpi-icon">
+                    <i class="fa-solid fa-clock"></i>
+                </div>
+
+                <div class="kpi-information">
+
+                    <span>Average Tenure</span>
+
+                    <strong>
+                        {{ avg_tenure | default(0) }}
+                    </strong>
+
+                </div>
+
+                <div class="kpi-subtext">
+                    Months
+                </div>
+
+            </div>
+
+
+            <!-- REVENUE RISK -->
+
+            <div class="bulk-kpi-card kpi-red">
+
+                <div class="kpi-icon">
+                    <i class="fa-solid fa-money-bill-trend-up"></i>
+                </div>
+
+                <div class="kpi-information">
+
+                    <span>Revenue at Risk</span>
+
+                    <strong>
+                        ${{ revenue_at_risk | default(0) }}
+                    </strong>
+
+                </div>
+
+            </div>
+
+        </div>
+
+
+        <!-- =================================================
+             RISK LEVELS
+        ================================================== -->
+
+        <div class="risk-section-header">
+
+            <div>
+
+                <span>RISK SEGMENTATION</span>
+
+                <h2>Customer Risk Levels</h2>
+
+            </div>
+
+        </div>
+
+
+        <div class="risk-card-grid">
+
+
+            <!-- HIGH -->
+
+            <div class="risk-level-card risk-high-card">
+
+                <div class="risk-card-top">
+
+                    <div class="risk-indicator high-indicator">
+                        <i class="fa-solid fa-triangle-exclamation"></i>
+                    </div>
+
+                    <span class="risk-status high-status">
+                        HIGH RISK
+                    </span>
+
+                </div>
+
+                <strong>
+                    {{ high | default(0) }}
+                </strong>
+
+                <p>
+                    Customers requiring immediate retention
+                    attention.
+                </p>
+
+            </div>
+
+
+            <!-- MEDIUM -->
+
+            <div class="risk-level-card risk-medium-card">
+
+                <div class="risk-card-top">
+
+                    <div class="risk-indicator medium-indicator">
+                        <i class="fa-solid fa-circle-exclamation"></i>
+                    </div>
+
+                    <span class="risk-status medium-status">
+                        MEDIUM RISK
+                    </span>
+
+                </div>
+
+                <strong>
+                    {{ medium | default(0) }}
+                </strong>
+
+                <p>
+                    Customers requiring proactive monitoring
+                    and engagement.
+                </p>
+
+            </div>
+
+
+            <!-- LOW -->
+
+            <div class="risk-level-card risk-low-card">
+
+                <div class="risk-card-top">
+
+                    <div class="risk-indicator low-indicator">
+                        <i class="fa-solid fa-circle-check"></i>
+                    </div>
+
+                    <span class="risk-status low-status">
+                        LOW RISK
+                    </span>
+
+                </div>
+
+                <strong>
+                    {{ low | default(0) }}
+                </strong>
+
+                <p>
+                    Customers currently showing lower
+                    churn probability.
+                </p>
+
+            </div>
+
+        </div>
+
+
+        <!-- =================================================
+             CRITICAL CUSTOMERS
+        ================================================== -->
+
+        <div class="critical-card">
+
+            <div class="critical-icon">
+                <i class="fa-solid fa-bell"></i>
+            </div>
+
+            <div>
+
+                <span>PRIORITY CUSTOMERS</span>
+
+                <h3>Critical Customers</h3>
+
+                <p>
+
+                    <strong>
+                        {{ critical_customers | default(0) }}
+                    </strong>
+
+                    customers require immediate attention
+                    based on predicted churn risk.
+
+                </p>
+
+            </div>
+
+        </div>
+
+
+        <!-- =================================================
+             EXECUTIVE SUMMARY
+        ================================================== -->
+
+        <div class="bulk-summary-card">
+
+            <div class="summary-icon">
+                <i class="fa-solid fa-lightbulb"></i>
+            </div>
+
+            <div>
+
+                <span>EXECUTIVE SUMMARY</span>
+
+                <h3>Retention Intelligence</h3>
+
+                <p>
+
+                    <strong>
+                        {{ churn | default(0) }}
+                    </strong>
+
+                    out of
+
+                    <strong>
+                        {{ total | default(0) }}
+                    </strong>
+
+                    customers are currently predicted to churn.
+
+                    Focus retention campaigns on high-risk
+                    customers first.
+
+                </p>
+
+            </div>
+
+        </div>
+
+
+        <!-- =================================================
+             TOP 10 CUSTOMERS
+        ================================================== -->
+
+        {% if top10 %}
+
+<div class="bulk-table-card">
+
+    <div class="table-card-header">
+
+        <span>PRIORITY CUSTOMERS</span>
+
+        <h2>Top 10 High-Risk Customers</h2>
+
+        <p class="table-description">
+            Customers with the highest predicted churn probability.
+        </p>
+
+    </div>
+
+
+    <div class="risk-customer-list">
+
+        {% for customer in top10 %}
+
+        <div class="risk-customer-row">
+
+            <!-- CUSTOMER -->
+
+            <div class="customer-identity">
+
+                <div class="customer-avatar">
+                    <i class="fa-solid fa-user"></i>
+                </div>
+
+                <div>
+
+                    <strong>
+                        {{ customer.CustomerID }}
+                    </strong>
+
+                    <span>
+                        {{ customer.Prediction }}
+                    </span>
+
+                </div>
+
+            </div>
+
+
+            <!-- PROBABILITY -->
+
+            <div class="customer-probability">
+
+                <span>
+                    Churn Probability
+                </span>
+
+                <strong>
+                    {{ customer.Probability }}%
+                </strong>
+
+                <div class="probability-bar">
+
+                    <div
+                        class="probability-fill"
+                        style="width: {{ customer.Probability }}%;"
+                    ></div>
+
+                </div>
+
+            </div>
+
+
+            <!-- RISK -->
+
+            <div class="customer-risk">
+
+                {% if customer.Risk == "High" %}
+
+                <span class="risk-badge high-badge">
+
+                    <i class="fa-solid fa-circle"></i>
+
+                    High
+
+                </span>
+
+                {% elif customer.Risk == "Medium" %}
+
+                <span class="risk-badge medium-badge">
+
+                    <i class="fa-solid fa-circle"></i>
+
+                    Medium
+
+                </span>
+
+                {% else %}
+
+                <span class="risk-badge low-badge">
+
+                    <i class="fa-solid fa-circle"></i>
+
+                    Low
+
+                </span>
+
+                {% endif %}
+
+            </div>
+
+
+            <!-- RECOMMENDATIONS -->
+
+            <div class="customer-recommendations">
+
+    <div class="recommendation-title">
+
+        <div class="recommendation-title-icon">
+            <i class="fa-solid fa-wand-magic-sparkles"></i>
+        </div>
+
+        <div>
+
+            <span>RETENTION STRATEGY</span>
+
+            <strong>
+                Recommended Actions
+            </strong>
 
         </div>
 
     </div>
 
-    <div class="analytics-grid">
 
-        <div class="chart-card">
+    <div class="recommendation-grid">
 
-            <h3>
+        {% for recommendation in customer.Recommendation %}
 
-                Revenue Summary
+        <div class="recommendation-card">
 
-            </h3>
+            <div class="recommendation-number">
+                {{ loop.index }}
+            </div>
 
-            <canvas id="revenueChart"></canvas>
+            <div class="recommendation-content">
 
-        </div>
+                <span>
+                    {{ recommendation }}
+                </span>
 
-        <div class="chart-card">
-
-            <h3>
-
-                Customer Distribution
-
-            </h3>
-
-            <canvas id="customerChart"></canvas>
+            </div>
 
         </div>
+
+                     {% endfor %}
 
     </div>
 
-</section>
+</div>
+
+{% endfor %}
+
+</div>
+
+</div>
+
+{% endif %}
 
 
+<!-- =================================================
+     COMPLETE PREDICTION TABLE
+================================================= -->
 
+<div class="bulk-table-card">
 
-        <!-- ====================================== -->
-    <!-- Top 10 High Risk Customers -->
-    <!-- ====================================== -->
+    <div class="table-card-header">
 
-    <section class="statistics">
+        <span>CUSTOMER PREDICTIONS</span>
 
-        <h2>
+        <h2>Complete Prediction Results</h2>
 
-            Top 10 Highest Risk Customers
+        <p class="table-description">
+            Complete churn prediction results for
+            the uploaded customer dataset.
+        </p>
 
-        </h2>
-
-        <div class="table-container">
-
-            <table>
-
-                <thead>
-
-                    <tr>
-
-                        <th>Customer ID</th>
-
-                        <th>Probability (%)</th>
-
-                        <th>Risk Level</th>
-
-                    </tr>
-
-                </thead>
-
-                <tbody>
-                    
-                    {% for row in top10 %}
-                    
-                    <tr>
-                        
-                        <td>
-                            
-                            {{ row.CustomerID }}
-                            
-                        </td>
-                        
-                        <td>
-                            
-                            {{ row.Probability }}
-                            
-                        </td>
-                        
-                        <td>
-                            
-                            {% if row.Risk == "High" %}
-                            
-                            <span class="high">
-                                
-                                High
-                                
-                            </span>
-                            
-                            {% elif row.Risk == "Medium" %}
-                            
-                            <span class="medium">
-                                
-                                Medium
-                                
-                            </span>
-                            
-                            {% else %}
-                            
-                            <span class="low">
-                                
-                                Low
-                                
-                            </span>
-                            
-                            {% endif %}
-                            
-                        </td>
-                        
-                    </tr>
-                    
-                    {% endfor %}
-                    
-                </tbody>
-                
-            </table>
-            
-        </div>
-        
-    </section>
-    <!-- ====================================== -->
-    <!-- Search & Filter -->
-    <!-- ====================================== -->
-    
-    <div class="search-container">
-      
-        <h2>Search Customer</h2>
-
-        <form class="search-form" method="POST">
-
-            <input
-                type="text"
-                name="customer_id"
-                class="search-input"
-                placeholder="Enter Customer ID">
-
-            <button type="submit" class="search-btn">
-                Search
-            </button>
-
-            <a href="/bulk_predict" class="reset-btn">
-                Reset
-            </a>
-
-        </form>
     </div>
-    
-    <!-- ====================================== -->
-    <!-- Download Button -->
-    <!-- ====================================== -->
 
-    <section class="submit-section">
 
-        <a
+    <div class="prediction-table-wrapper">
 
-            href="{{ url_for('download_file', filename=download_file) }}"
+        <table class="prediction-table">
 
-            class="download-btn">
+            <thead>
 
-            <i class="fa-solid fa-download"></i>
+                <tr>
 
-            Download Prediction Results
+                    <th>Customer ID</th>
 
-        </a>
+                    <th>Prediction</th>
 
-    </section>
+                    <th>Probability</th>
 
-    <!-- ====================================== -->
-    <!-- Prediction Results -->
-    <!-- ====================================== -->
+                    <th>Risk</th>
 
-    <section class="statistics">
+                    <th>Recommendation</th>
 
-        <h2>
+                </tr>
 
-            Complete Prediction Results
+            </thead>
 
-        </h2>
 
-        <div class="table-container">
+            <tbody>
 
-            <table>
+                {% for customer in table %}
 
-                <thead>
+                <tr>
 
-                    <tr>
+                    <!-- CUSTOMER -->
 
-                        <th>
+                    <td>
 
-                            Customer ID
+                        <strong>
+                            {{ customer.CustomerID }}
+                        </strong>
 
-                        </th>
+                    </td>
 
-                        <th>
 
-                            Prediction
+                    <!-- PREDICTION -->
 
-                        </th>
+                    <td>
 
-                        <th>
+                        {% if customer.Prediction == "Customer Will Churn" %}
 
-                            Probability
+                        <span class="prediction-churn">
 
-                        </th>
+                            <i class="fa-solid fa-arrow-trend-down"></i>
 
-                        <th>
+                            Will Churn
 
-                            Risk
+                        </span>
 
-                        </th>
+                        {% else %}
 
-                        <th>
+                        <span class="prediction-stay">
 
-                            Recommendation
+                            <i class="fa-solid fa-arrow-trend-up"></i>
 
-                        </th>
+                            Will Stay
 
-                    </tr>
+                        </span>
 
-                </thead>
+                        {% endif %}
 
-                <tbody id="predictionTable">
+                    </td>
 
-                {% for row in table %}
 
-                    <tr class="customer-row">
+                    <!-- PROBABILITY -->
 
-                        <td>
+                    <td>
 
-                            {{ row.CustomerID }}
+                        <div class="table-probability">
 
-                        </td>
+                            <strong>
+                                {{ customer.Probability }}%
+                            </strong>
 
-                        <td>
+                            <div class="table-probability-bar">
 
-                            {{ row.Prediction }}
+                                <div
+                                    style="width: {{ customer.Probability }}%;"
+                                ></div>
 
-                        </td>
+                            </div>
 
-                        <td>
+                        </div>
 
-                            {{ row.Probability }}%
+                    </td>
 
-                        </td>
 
-                        <td>
+                    <!-- RISK -->
 
-                            {% if row.Risk == "High" %}
+                    <td>
 
-                                <span class="high">
+                        {% if customer.Risk == "High" %}
+
+                        <span class="risk-badge high-badge">
+
+                            <i class="fa-solid fa-circle"></i>
+
+                            High
+
+                        </span>
+
+                        {% elif customer.Risk == "Medium" %}
+
+                        <span class="risk-badge medium-badge">
+
+                            <i class="fa-solid fa-circle"></i>
+
+                            Medium
+
+                        </span>
+
+                        {% else %}
+
+                        <span class="risk-badge low-badge">
+
+                            <i class="fa-solid fa-circle"></i>
+
+                            Low
+
+                        </span>
+
+                        {% endif %}
+
+                    </td>
+
+
+                    <!-- RECOMMENDATION -->
+
+                    <td>
+
+                        <div class="table-recommendations">
+
+                            <div class="table-recommendation-header">
+
+                                <i class="fa-solid fa-lightbulb"></i>
+
+                                <span>
+                                    {{ customer.Recommendation | length }}
+                                    Actions
+                                </span>
+
+                            </div>
+
+
+                            <div class="table-recommendation-list">
+
+                                {% for recommendation in customer.Recommendation[:3] %}
+
+                                <div class="table-recommendation-item">
+
+                                    <i class="fa-solid fa-check"></i>
+
+                                    <span>
+                                        {{ recommendation }}
+                                    </span>
+
+                                </div>
+
+                                {% endfor %}
+
+
+                                {% if customer.Recommendation | length > 3 %}
+
+                                <div class="more-recommendations">
+
+                                    +{{ customer.Recommendation | length - 3 }}
+                                    more actions
+
+                                </div>
+
+                                {% endif %}
+
+                            </div>
+
+                        </div>
+
+                    </td>
+
+                </tr>
+
+                {% endfor %}
+
+            </tbody>
+
+        </table>
+
+    </div>
+
+</div>
+
+        <!-- =================================================
+             COMPLETE PREDICTION TABLE
+        ================================================== -->
+
+        <div class="bulk-table-card">
+
+            <div class="table-card-header">
+
+                <span>CUSTOMER PREDICTIONS</span>
+
+                <h2>Complete Prediction Results</h2>
+
+                <p class="table-description">
+                    Complete churn prediction results for
+                    the uploaded customer dataset.
+                </p>
+
+            </div>
+
+
+            <div class="prediction-table-wrapper">
+
+                <table class="prediction-table">
+
+                    <thead>
+
+                        <tr>
+
+                            <th>Customer ID</th>
+
+                            <th>Prediction</th>
+
+                            <th>Probability</th>
+
+                            <th>Risk</th>
+
+                            <th>Recommendation</th>
+
+                        </tr>
+
+                    </thead>
+
+
+                    <tbody>
+
+                        {% for customer in table %}
+
+                        <tr>
+
+
+                            <!-- CUSTOMER -->
+
+                            <td>
+
+                                <strong>
+                                    {{ customer.CustomerID }}
+                                </strong>
+
+                            </td>
+
+
+                            <!-- PREDICTION -->
+
+                            <td>
+
+                                {% if customer.Prediction == "Customer Will Churn" %}
+
+                                <span class="prediction-churn">
+
+                                    <i class="fa-solid fa-arrow-trend-down"></i>
+
+                                    Will Churn
+
+                                </span>
+
+                                {% else %}
+
+                                <span class="prediction-stay">
+
+                                    <i class="fa-solid fa-arrow-trend-up"></i>
+
+                                    Will Stay
+
+                                </span>
+
+                                {% endif %}
+
+                            </td>
+
+
+                            <!-- PROBABILITY -->
+
+                            <td>
+
+                                <div class="table-probability">
+
+                                    <strong>
+                                        {{ customer.Probability }}%
+                                    </strong>
+
+                                    <div class="table-probability-bar">
+
+                                        <div
+                                            style="width: {{ customer.Probability }}%;"
+                                        ></div>
+
+                                    </div>
+
+                                </div>
+
+                            </td>
+
+
+                            <!-- RISK -->
+
+                            <td>
+
+                                {% if customer.Risk == "High" %}
+
+                                <span class="risk-badge high-badge">
+
+                                    <i class="fa-solid fa-circle"></i>
 
                                     High
 
                                 </span>
 
-                            {% elif row.Risk == "Medium" %}
+                                {% elif customer.Risk == "Medium" %}
 
-                                <span class="medium">
+                                <span class="risk-badge medium-badge">
+
+                                    <i class="fa-solid fa-circle"></i>
 
                                     Medium
 
                                 </span>
 
-                            {% else %}
+                                {% else %}
 
-                                <span class="low">
+                                <span class="risk-badge low-badge">
+
+                                    <i class="fa-solid fa-circle"></i>
 
                                     Low
 
                                 </span>
 
-                            {% endif %}
+                                {% endif %}
 
-                        </td>
+                            </td>
 
-                        <td>
 
-                            <ul class="recommendation-list">
+                            <!-- RECOMMENDATION -->
 
-                                {% for item in row.Recommendation %}
+                            <td>
 
-                                    <li>
+    <div class="table-recommendations">
 
-                                        {{ item }}
+        <div class="table-recommendation-header">
 
-                                    </li>
+            <i class="fa-solid fa-lightbulb"></i>
 
-                                {% endfor %}
+            <span>
+                {{ customer.Recommendation | length }} Actions
+            </span>
 
-                            </ul>
-
-                        </td>
-
-                    </tr>
-
-                {% endfor %}
-
-                </tbody>
-
-            </table>
-                    <div class="pagination">
-
-                        <button id="prevPage">
-
-                            Previous
-
-                        </button>
-
-                        <span id="pageInfo">
-
-                            Page 1
-
-                        </span>
-
-                        <button id="nextPage">
-
-                            Next
-
-                        </button>
-
-                </div>
         </div>
 
-    </section>
 
-        <!-- ====================================== -->
-    <!-- Footer -->
-    <!-- ====================================== -->
+        <div class="table-recommendation-list">
 
-    <footer class="footer">
+            {% for recommendation in customer.Recommendation[:3] %}
 
-        <div class="footer-content">
+            <div class="table-recommendation-item">
 
-            <h2>
+                <i class="fa-solid fa-check"></i>
 
-                Customer Retention Intelligence Platform
-
-            </h2>
-
-            <p>
-
-                AI Powered Customer Churn Prediction & Retention Intelligence
-
-            </p>
-
-            <div class="footer-grid">
-
-                <div class="footer-card">
-
-                    <i class="fa-solid fa-brain"></i>
-
-                    <h4>
-
-                        Machine Learning
-
-                    </h4>
-
-                    <p>
-
-                        Random Forest Model
-
-                    </p>
-
-                </div>
-
-                <div class="footer-card">
-
-                    <i class="fa-solid fa-chart-line"></i>
-
-                    <h4>
-
-                        Analytics
-
-                    </h4>
-
-                    <p>
-
-                        Business Intelligence Dashboard
-
-                    </p>
-
-                </div>
-
-                <div class="footer-card">
-
-                    <i class="fa-solid fa-users"></i>
-
-                    <h4>
-
-                        Customer Insights
-
-                    </h4>
-
-                    <p>
-
-                        Risk Segmentation
-
-                    </p>
-
-                </div>
-
-                <div class="footer-card">
-
-                    <i class="fa-solid fa-lightbulb"></i>
-
-                    <h4>
-
-                        Recommendations
-
-                    </h4>
-
-                    <p>
-
-                        Retention Strategies
-
-                    </p>
-
-                </div>
+                <span>
+                    {{ recommendation }}
+                </span>
 
             </div>
 
-            <br>
+            {% endfor %}
 
-            <a
+            {% if customer.Recommendation | length > 3 %}
 
-                href="/"
+            <div class="more-recommendations">
 
-                class="predict-btn"
+                +{{ customer.Recommendation | length - 3 }}
+                more actions
 
-                style="text-decoration:none;display:inline-block;">
+            </div>
 
-                <i class="fa-solid fa-arrow-left"></i>
-
-                Back to Single Prediction
-
-            </a>
-
-            <hr>
-
-            <p>
-
-                Developed as a Customer Churn Prediction &
-                Retention Intelligence Platform
-
-            </p>
-
-            <p>
-
-                Built with
-
-                <strong>
-
-                    Python • Flask • Machine Learning • HTML • CSS
-
-                </strong>
-
-            </p>
-
-            <p>
-
-                © 2026 All Rights Reserved
-
-            </p>
+            {% endif %}
 
         </div>
 
-    </footer>
+    </div>
+
+</td>
+
+                        </tr>
+
+                        {% endfor %}
+
+                    </tbody>
+
+                </table>
+
+            </div>
+
+        </div>
+
+    </section>
 
     {% endif %}
 
 </div>
 
-</body>
 
-</html>
+<!-- =====================================================
+     FILE NAME DISPLAY
+====================================================== -->
+
+<style>
+
+.selected-file {
+
+    margin-top: 12px;
+
+    color: var(--text-muted);
+
+    font-size: 11px;
+
+}
+
+.file-drop-zone:has(input:valid) .selected-file {
+
+    color: var(--success);
+
+}
+
+</style>
+
+{% endblock %}

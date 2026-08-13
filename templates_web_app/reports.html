@@ -1,0 +1,46 @@
+{% extends "base.html" %}
+{% block title %}Reports{% endblock %}
+{% block content %}
+
+<section class="page-header">
+    <h1>Reports</h1>
+    <p>Every bulk prediction run automatically generates a downloadable report below.</p>
+</section>
+
+<div class="table-actions">
+    <a href="{{ url_for('bulk_prediction') }}" class="btn btn-primary">Generate a New Report</a>
+</div>
+
+{% if reports %}
+<div class="table-wrap">
+    <table class="data-table">
+        <thead>
+            <tr>
+                <th>Report File</th>
+                <th>Rows</th>
+                <th>Size</th>
+                <th>Generated</th>
+                <th></th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for report in reports %}
+            <tr>
+                <td>{{ report.filename }}</td>
+                <td>{{ report.row_count }}</td>
+                <td>{{ report.size_kb }} KB</td>
+                <td>{{ report.modified }}</td>
+                <td><a href="{{ url_for('download_results', filename=report.filename) }}" class="btn btn-outline btn-sm">Download</a></td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+{% else %}
+<div class="empty-state">
+    <h3>No Reports Yet</h3>
+    <p>Reports are generated automatically each time you run a bulk prediction. Upload a customer CSV to create your first report.</p>
+</div>
+{% endif %}
+
+{% endblock %}

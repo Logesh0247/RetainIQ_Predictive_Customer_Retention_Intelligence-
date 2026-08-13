@@ -1,0 +1,46 @@
+{% extends "base.html" %}
+{% block title %}Bulk Prediction{% endblock %}
+{% block content %}
+
+<section class="page-header">
+    <h1>Bulk Customer Scoring</h1>
+    <p>Upload a CSV of your customer base to read the signal on your entire portfolio at once.</p>
+</section>
+
+{% if not model_ready %}
+<div class="alert alert-error">The prediction model is currently unavailable. Bulk predictions cannot run until models/best_model.pkl is present.</div>
+{% endif %}
+
+<div class="workflow" style="margin-bottom: 24px;">
+    <div class="workflow-chain">
+        <span class="workflow-step">Upload CSV</span><span class="workflow-arrow">→</span>
+        <span class="workflow-step">Validate Dataset</span><span class="workflow-arrow">→</span>
+        <span class="workflow-step">Process Customers</span><span class="workflow-arrow">→</span>
+        <span class="workflow-step">Predict Churn</span><span class="workflow-arrow">→</span>
+        <span class="workflow-step">Generate Results</span>
+    </div>
+</div>
+
+<form class="form-card" style="padding: 28px;" method="POST" action="{{ url_for('bulk_prediction') }}" enctype="multipart/form-data">
+    <h3 class="form-section-title">Upload CSV</h3>
+    <div class="upload-box">
+        <label for="customer_csv" class="upload-label">Choose a .csv file</label>
+        <input type="file" id="customer_csv" name="customer_csv" accept=".csv" required>
+        <p class="upload-hint">
+            Required columns: customerID (optional, auto-generated), gender, SeniorCitizen, Partner,
+            Dependents, tenure, PhoneService, MultipleLines, InternetService, OnlineSecurity, OnlineBackup,
+            DeviceProtection, TechSupport, StreamingTV, StreamingMovies, Contract, PaperlessBilling,
+            PaymentMethod, MonthlyCharges, TotalCharges.
+        </p>
+    </div>
+    <div class="form-actions">
+        <button type="submit" class="btn btn-primary" {{ 'disabled' if not model_ready }}>Upload &amp; Predict</button>
+    </div>
+</form>
+
+<div class="info-panel">
+    <h3>Sample Format</h3>
+    <p>Not sure of the format? A sample dataset matching this schema (<code>sample_customers.csv</code>) ships in the project root — upload it to test the flow end to end.</p>
+</div>
+
+{% endblock %}

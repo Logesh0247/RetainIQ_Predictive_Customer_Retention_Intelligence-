@@ -1,27 +1,13 @@
-<!DOCTYPE html>
-<html lang="en">
+{% extends "base.html" %}
 
-<head>
+{% block title %}
 
-    <meta charset="UTF-8">
+RetainIQ | Prediction Result
 
-    <meta name="viewport"
-          content="width=device-width, initial-scale=1.0">
+{% endblock %}
 
-    <title>
 
-        Customer Churn Prediction Result
-
-    </title>
-
-    <link rel="stylesheet"
-          href="{{ url_for('static', filename='style.css') }}">
-
-    <link rel="stylesheet"
-          href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css">
-
-</head>
-
+{% block content %}
 <body>
 
 <div class="container">
@@ -201,7 +187,7 @@
 
         <a
 
-            href="/"
+             href="{{ url_for('single_prediction') }}"
 
             class="predict-btn"
 
@@ -275,8 +261,4 @@
 
     </footer>
 
-</div>
-
-</body>
-
-</html>
+{% endblock %}

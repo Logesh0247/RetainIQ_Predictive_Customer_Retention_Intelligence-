@@ -1,0 +1,77 @@
+{% extends "base.html" %}
+{% block title %}Home{% endblock %}
+{% block content %}
+
+<section class="hero">
+    <div>
+        <div class="hero-eyebrow"><span class="dot"></span>Live churn model &middot; {{ 'online' if model_ready else 'offline' }}</div>
+        <h1 class="hero-title">Know who's about to<br>lose <span class="accent">signal</span>.</h1>
+        <p class="hero-desc">
+            RetainIQ reads every customer's account like a signal strength meter. Weak signal means
+            they're about to churn &mdash; and you'll know why, and what to offer them, before they cancel.
+        </p>
+        <div class="hero-actions">
+            <a href="{{ url_for('single_prediction') }}" class="btn btn-primary">Predict Customer Churn</a>
+            <a href="{{ url_for('bulk_prediction') }}" class="btn btn-secondary">Bulk Prediction</a>
+            <a href="{{ url_for('prediction_dashboard') }}" class="btn btn-outline">View Dashboard</a>
+        </div>
+        {% if not model_ready %}
+        <p class="hero-warning">⚠ The prediction model isn't loaded. Predictions are unavailable until models/best_model.pkl is present.</p>
+        {% endif %}
+    </div>
+    <div class="hero-signal">
+        <div class="bar"></div><div class="bar"></div><div class="bar"></div><div class="bar"></div><div class="bar"></div>
+    </div>
+</section>
+
+<section class="features">
+    <div class="section-eyebrow">Capabilities</div>
+    <h2 class="section-title">What the console does</h2>
+    <div class="card-grid">
+        <div class="feature-card">
+            <div class="feature-icon">01</div>
+            <h3>AI Churn Prediction</h3>
+            <p>Score any individual customer in seconds using a trained machine learning model.</p>
+        </div>
+        <div class="feature-card">
+            <div class="feature-icon">02</div>
+            <h3>Risk Analysis</h3>
+            <p>Every customer reads out as a 1&ndash;5 bar signal &mdash; instantly scannable risk, no legend needed.</p>
+        </div>
+        <div class="feature-card">
+            <div class="feature-icon">03</div>
+            <h3>Bulk Prediction</h3>
+            <p>Upload a CSV of your customer base and score your entire portfolio at once.</p>
+        </div>
+        <div class="feature-card">
+            <div class="feature-icon">04</div>
+            <h3>Retention Recommendations</h3>
+            <p>Get specific, explainable next-best-actions tailored to each customer's profile.</p>
+        </div>
+        <div class="feature-card">
+            <div class="feature-icon">05</div>
+            <h3>Executive Dashboard</h3>
+            <p>Track churn KPIs, risk distribution, and at-risk revenue in one console.</p>
+        </div>
+        <div class="feature-card">
+            <div class="feature-icon">06</div>
+            <h3>Business Intelligence</h3>
+            <p>Connect to Power BI for deeper, organization-wide retention reporting.</p>
+        </div>
+    </div>
+</section>
+
+<section class="workflow">
+    <div class="section-eyebrow">Pipeline</div>
+    <h2 class="section-title">How a prediction happens</h2>
+    <div class="workflow-chain">
+        <span class="workflow-step">Customer Data</span><span class="workflow-arrow">→</span>
+        <span class="workflow-step">Data Processing</span><span class="workflow-arrow">→</span>
+        <span class="workflow-step">ML Prediction</span><span class="workflow-arrow">→</span>
+        <span class="workflow-step">Churn Probability</span><span class="workflow-arrow">→</span>
+        <span class="workflow-step">Risk Classification</span><span class="workflow-arrow">→</span>
+        <span class="workflow-step">Retention Recommendation</span>
+    </div>
+</section>
+
+{% endblock %}

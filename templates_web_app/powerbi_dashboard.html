@@ -1,0 +1,32 @@
+{% extends "base.html" %}
+{% block title %}Power BI Dashboard{% endblock %}
+{% block content %}
+
+<section class="page-header">
+    <h1>Power BI Dashboard</h1>
+    <p>Organization-wide churn and retention reporting, powered by Power BI.</p>
+</section>
+
+<div class="info-panel">
+    <p>
+        This page embeds RetainIQ's live Power BI dashboard covering churn trends, revenue at risk,
+        segment-level analysis, and retention campaign performance across the full customer base.
+    </p>
+</div>
+
+{% if powerbi_url %}
+    <div class="powerbi-embed-wrap">
+        <iframe title="RetainIQ Power BI Dashboard" src="{{ powerbi_url }}" allowFullScreen="true" class="powerbi-frame"></iframe>
+    </div>
+{% else %}
+    <div class="empty-state">
+        <h3>Power BI Dashboard Not Configured</h3>
+        <p>
+            No Power BI embed URL has been configured yet. Once your organization's Power BI workspace
+            is set up, add the embed URL to the <code>POWERBI_URL</code> variable in <code>app.py</code>
+            and this page will automatically display the live dashboard.
+        </p>
+    </div>
+{% endif %}
+
+{% endblock %}

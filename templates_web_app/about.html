@@ -1,0 +1,68 @@
+{% extends "base.html" %}
+{% block title %}About{% endblock %}
+{% block content %}
+
+<section class="page-header">
+    <h1>About RetainIQ</h1>
+    <p>Customer Churn Prediction &amp; Retention Intelligence Platform</p>
+</section>
+
+<div class="about-grid">
+
+    <div class="result-card">
+        <h3 class="result-card-title">Purpose</h3>
+        <p>
+            Customer churn &mdash; when a subscriber cancels or stops using a service &mdash; is one of the
+            most expensive problems in telecom. RetainIQ uses machine learning to predict which customers
+            are likely to churn before they leave, so retention teams can act early rather than reactively.
+        </p>
+    </div>
+
+    <div class="result-card">
+        <h3 class="result-card-title">Machine Learning</h3>
+        <p>RetainIQ supports and was benchmarked against the following model families:</p>
+        <ul class="plain-list">
+            <li>Logistic Regression</li>
+            <li>Random Forest</li>
+            <li>XGBoost</li>
+            <li>LightGBM</li>
+        </ul>
+        {% if model_name %}
+        <p class="muted">Currently deployed model: <strong>{{ model_name.replace('_', ' ').title() }}</strong></p>
+        {% if metrics %}
+        <table class="info-table">
+            {% for name, score in metrics.items() %}
+            <tr><td>{{ name.replace('_', ' ').title() }}</td><td>ROC-AUC: {{ '%.3f'|format(score) }}</td></tr>
+            {% endfor %}
+        </table>
+        {% endif %}
+        {% else %}
+        <p class="muted">No model is currently loaded.</p>
+        {% endif %}
+    </div>
+
+    <div class="result-card">
+        <h3 class="result-card-title">Technology</h3>
+        <ul class="plain-list">
+            <li>Python</li>
+            <li>Flask</li>
+            <li>HTML &amp; CSS</li>
+            <li>Pandas</li>
+            <li>Scikit-learn</li>
+        </ul>
+    </div>
+
+    <div class="result-card result-card-wide">
+        <h3 class="result-card-title">Business Value</h3>
+        <ul class="plain-list">
+            <li>Identify high-risk customers before they cancel</li>
+            <li>Prioritize retention effort and budget where it matters most</li>
+            <li>Reduce overall customer loss and churn-driven revenue leakage</li>
+            <li>Improve customer lifetime value through targeted, explainable interventions</li>
+            <li>Support data-driven decisions with an executive dashboard and downloadable reports</li>
+        </ul>
+    </div>
+
+</div>
+
+{% endblock %}

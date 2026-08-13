@@ -1,0 +1,110 @@
+{% extends "base.html" %}
+{% block title %}Bulk Results{% endblock %}
+{% block content %}
+
+<section class="page-header">
+    <h1>Bulk Prediction Results</h1>
+    <p>{{ kpis.total_customers }} customers processed successfully.</p>
+</section>
+
+<div class="kpi-grid kpi-grid-compact">
+    <div class="kpi-card">
+        <div class="kpi-label">Total Customers</div>
+        <div class="kpi-value">{{ kpis.total_customers }}</div>
+    </div>
+    <div class="kpi-card kpi-warning">
+        <div class="kpi-label">Customers at Risk</div>
+        <div class="kpi-value">{{ kpis.high_risk_count + kpis.medium_risk_count }}</div>
+    </div>
+    <div class="kpi-card kpi-danger">
+        <div class="kpi-label">High Risk</div>
+        <div class="kpi-value">{{ kpis.high_risk_count }}</div>
+    </div>
+    <div class="kpi-card kpi-warning">
+        <div class="kpi-label">Medium Risk</div>
+        <div class="kpi-value">{{ kpis.medium_risk_count }}</div>
+    </div>
+    <div class="kpi-card kpi-success">
+        <div class="kpi-label">Low Risk</div>
+        <div class="kpi-value">{{ kpis.low_risk_count }}</div>
+    </div>
+    <div class="kpi-card">
+        <div class="kpi-label">Avg. Probability</div>
+        <div class="kpi-value">{{ kpis.avg_churn_probability }}%</div>
+    </div>
+</div>
+
+<div class="table-actions">
+    <a href="{{ url_for('download_results', filename=download_filename) }}" class="btn btn-primary">Download Full Results (CSV)</a>
+    <a href="{{ url_for('prediction_dashboard') }}" class="btn btn-secondary">View Full Dashboard</a>
+    {% if total_rows > max_display_rows %}
+    <span class="table-note">Showing the first {{ max_display_rows }} of {{ total_rows }} customers per view — the CSV download has all {{ total_rows }}.</span>
+    {% endif %}
+</div>
+
+<!-- Pure-CSS sort tabs: three server-pre-sorted views, toggled with the radio hack -->
+<div class="tabset">
+    <input type="radio" name="sort_tab" id="tab-prob" class="control-input" checked>
+    <input type="radio" name="sort_tab" id="tab-charges" class="control-input">
+    <input type="radio" name="sort_tab" id="tab-tenure" class="control-input">
+
+    <nav class="tab-controls">
+        <label for="tab-prob">Sort: Highest Risk</label>
+        <label for="tab-charges">Sort: Highest Billing</label>
+        <label for="tab-tenure">Sort: Newest Customers</label>
+    </nav>
+
+    <div class="tab-panels">
+        {% macro render_table(records) %}
+        <div class="table-wrap">
+            <table class="data-table">
+                <thead>
+                    <tr>
+                        <th>Customer ID</th>
+                        <th>Signal</th>
+                        <th>Probability</th>
+                        <th>Prediction</th>
+                        <th>Risk</th>
+                        <th>Recommendation</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for row in records %}
+                    <tr>
+                        <td class="mono">{{ row.id }}</td>
+                        <td>
+                            <div class="signal-meter {{ row.risk_css }}">
+                                {% for i in range(5) %}
+                                <span class="bar {{ 'lit' if i < row.signal_bars else '' }}"></span>
+                                {% endfor %}
+                            </div>
+                        </td>
+                        <td class="mono">{{ row.probability_pct }}%</td>
+                        <td><span class="{{ 'text-danger' if row.will_churn else 'text-success' }}">{{ row.prediction }}</span></td>
+                        <td><span class="risk-badge risk-badge-sm {{ row.risk_css }}">{{ row.risk_level }}</span></td>
+                        <td class="rec-cell">
+                            <details class="row-detail">
+                                <summary>{{ row.recommendations[0] }}</summary>
+                                {% if row.recommendations|length > 1 %}
+                                <ul>
+                                    {% for rec in row.recommendations[1:] %}
+                                    <li>{{ rec }}</li>
+                                    {% endfor %}
+                                </ul>
+                                {% endif %}
+                            </details>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        {% endmacro %}
+
+        <div class="tab-panel panel-prob">{{ render_table(records_by_prob) }}</div>
+        <div class="tab-panel panel-charges">{{ render_table(records_by_charges) }}</div>
+        <div class="tab-panel panel-tenure">{{ render_table(records_by_tenure) }}</div>
+    </div>
+</div>
+
+{% endblock %}
