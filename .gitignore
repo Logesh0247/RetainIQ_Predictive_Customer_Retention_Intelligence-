@@ -1,1 +1,7 @@
+__pycache__/
+*.pyc
+.venv/
+venv/
 .env
+uploads/*
+reports/.cache_*.pkl

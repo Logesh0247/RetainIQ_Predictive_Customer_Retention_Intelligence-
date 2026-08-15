@@ -1,86 +1,212 @@
 {% extends "base.html" %}
-
-{% block title %}
-
-RetainIQ | About
-
-{% endblock %}
-
-
+{% block title %}About RetainIQ{% endblock %}
 {% block content %}
 
-<section class="page-hero">
-
-    <span>
-        ABOUT RETAINIQ
-    </span>
-
-    <h1>
-        Customer Churn Prediction &
-        Retention Intelligence
-    </h1>
-
-    <p>
-        RetainIQ combines machine learning,
-        predictive analytics and business intelligence
-        to help organizations proactively retain customers.
-    </p>
-
+<section class="page-header">
+    <h1>About RetainIQ</h1>
+    <p>AI-driven customer retention intelligence for proactive churn management</p>
 </section>
 
+<div class="about-grid">
 
-<section class="about-grid">
-
-    <div class="about-card">
-
-        <i class="fa-solid fa-bullseye"></i>
-
-        <h2>
-            Project Objective
-        </h2>
-
+    <!-- Platform Overview -->
+    <div class="result-card result-card-wide">
+        <h3 class="result-card-title">What is RetainIQ?</h3>
         <p>
-            Identify customers with a high probability of
-            churn and convert predictive insights into
-            actionable retention strategies.
+            <strong>RetainIQ</strong> is a Customer Churn Prediction &amp; Retention Intelligence Platform
+            designed to help telecom businesses identify customers who are at risk of leaving and take
+            proactive retention action before churn occurs.
         </p>
-
+        <p>
+            The platform combines customer data, machine learning, risk segmentation, analytics and
+            retention recommendations into a single operational workflow. Instead of treating churn as
+            a historical reporting problem, RetainIQ turns customer behavior into an early-warning signal
+            that teams can investigate and act upon.
+        </p>
     </div>
 
-
-    <div class="about-card">
-
-        <i class="fa-solid fa-brain"></i>
-
-        <h2>
-            Machine Learning
-        </h2>
-
+    <!-- Business Problem -->
+    <div class="result-card">
+        <h3 class="result-card-title">The Business Problem</h3>
         <p>
-            The platform uses a trained machine-learning
-            pipeline to generate customer churn predictions,
-            probability scores and risk classifications.
+            Customer churn can directly affect recurring revenue, customer lifetime value and the cost of
+            acquiring replacement customers. Traditional reporting often explains <em>who already left</em>,
+            but retention teams need to know <em>who is likely to leave next</em>.
         </p>
-
+        <ul class="plain-list">
+            <li>Detect potential churn before cancellation occurs</li>
+            <li>Prioritize customers by predicted risk</li>
+            <li>Understand the signals associated with customer churn</li>
+            <li>Support targeted retention decisions instead of blanket campaigns</li>
+        </ul>
     </div>
 
-
-    <div class="about-card">
-
-        <i class="fa-solid fa-chart-line"></i>
-
-        <h2>
-            Business Intelligence
-        </h2>
-
+    <!-- Solution -->
+    <div class="result-card">
+        <h3 class="result-card-title">Our Solution</h3>
         <p>
-            Prediction outputs are transformed into
-            dashboards, reports and retention intelligence
-            for business decision-making.
+            RetainIQ transforms customer attributes into a churn-risk signal and presents the result in a
+            business-friendly format. Each prediction can be translated into a risk level and actionable
+            retention guidance.
         </p>
-
+        <ul class="plain-list">
+            <li>Customer-level churn probability</li>
+            <li>Risk classification for prioritization</li>
+            <li>Bulk prediction for large customer datasets</li>
+            <li>Dashboard-level monitoring and segmentation</li>
+            <li>Retention recommendations for intervention planning</li>
+        </ul>
     </div>
 
-</section>
+    <!-- Workflow -->
+    <div class="result-card result-card-wide">
+        <h3 class="result-card-title">How RetainIQ Works</h3>
+        <div class="info-table">
+            <table>
+                <tr><td><strong>01 · Customer Data</strong></td><td>Customer demographics, services, tenure, billing and account characteristics are supplied to the platform.</td></tr>
+                <tr><td><strong>02 · Preprocessing</strong></td><td>Input data is validated, transformed and aligned with the feature structure expected by the production model.</td></tr>
+                <tr><td><strong>03 · Machine Learning</strong></td><td>The deployed classification model estimates the probability that a customer will churn.</td></tr>
+                <tr><td><strong>04 · Risk Intelligence</strong></td><td>Predictions are converted into understandable risk segments so high-priority customers can be identified quickly.</td></tr>
+                <tr><td><strong>05 · Retention Action</strong></td><td>Customer-specific recommendations help retention teams decide what type of intervention should be considered.</td></tr>
+                <tr><td><strong>06 · Analytics</strong></td><td>Aggregated predictions support dashboards, reporting and executive-level monitoring of the churn landscape.</td></tr>
+            </table>
+        </div>
+    </div>
+
+    <!-- ML -->
+    <div class="result-card">
+        <h3 class="result-card-title">Machine Learning Engine</h3>
+        <p>RetainIQ was benchmarked across multiple supervised classification approaches:</p>
+        <ul class="plain-list">
+            <li>Logistic Regression</li>
+            <li>Random Forest</li>
+            <li>XGBoost</li>
+            <li>LightGBM</li>
+        </ul>
+        {% if model_name %}
+        <p class="muted">Currently deployed model: <strong>{{ model_name.replace('_', ' ').title() }}</strong></p>
+        {% if metrics %}
+        <table class="info-table">
+            {% for name, score in metrics.items() %}
+            <tr><td>{{ name.replace('_', ' ').title() }}</td><td>ROC-AUC: {{ '%.3f'|format(score) }}</td></tr>
+            {% endfor %}
+        </table>
+        {% endif %}
+        {% else %}
+        <p class="muted">The production model is loaded by the application at runtime.</p>
+        {% endif %}
+    </div>
+
+    <!-- Performance -->
+    <div class="result-card">
+        <h3 class="result-card-title">Model Performance</h3>
+        <p>
+            Model evaluation focused on classification quality and the ability to identify customers who
+            are likely to churn. The selected Random Forest model achieved the strongest overall performance
+            in the project benchmark.
+        </p>
+        <table class="info-table">
+            <tr><td>Accuracy</td><td><strong>93.19%</strong></td></tr>
+            <tr><td>F1 Score</td><td><strong>87.10%</strong></td></tr>
+            <tr><td>Selected Model</td><td><strong>Random Forest</strong></td></tr>
+        </table>
+        <p class="muted">
+            These figures describe the project evaluation results; production monitoring should continue to
+            validate model performance as customer behavior and data distributions change.
+        </p>
+    </div>
+
+    <!-- Capabilities -->
+    <div class="result-card result-card-wide">
+        <h3 class="result-card-title">Platform Capabilities</h3>
+        <table class="info-table">
+            <tr><td><strong>Single Prediction</strong></td><td>Evaluate an individual customer's churn probability, risk level and retention signals.</td></tr>
+            <tr><td><strong>Bulk Prediction</strong></td><td>Process a customer dataset and generate churn predictions across many customers in one workflow.</td></tr>
+            <tr><td><strong>Prediction Dashboard</strong></td><td>Monitor churn distribution, risk segments, customer patterns and key prediction indicators.</td></tr>
+            <tr><td><strong>Power BI Dashboard</strong></td><td>Explore business-oriented analytics and visual reporting for decision makers.</td></tr>
+            <tr><td><strong>Reports</strong></td><td>Use prediction outputs and analytical summaries to support operational and management decisions.</td></tr>
+            <tr><td><strong>Retention Intelligence</strong></td><td>Translate model predictions into practical customer-retention recommendations.</td></tr>
+        </table>
+    </div>
+
+    <!-- Technology -->
+    <div class="result-card">
+        <h3 class="result-card-title">Technology Stack</h3>
+        <ul class="plain-list">
+            <li><strong>Python</strong> — application and machine learning development</li>
+            <li><strong>Flask</strong> — web application and routing</li>
+            <li><strong>Pandas &amp; NumPy</strong> — data processing and numerical computation</li>
+            <li><strong>Scikit-learn</strong> — preprocessing and machine learning</li>
+            <li><strong>XGBoost &amp; LightGBM</strong> — gradient-boosting model benchmarking</li>
+            <li><strong>SHAP</strong> — model explainability</li>
+            <li><strong>HTML &amp; CSS</strong> — responsive Signal Ops Console interface</li>
+            <li><strong>Power BI</strong> — business intelligence and visualization</li>
+        </ul>
+    </div>
+
+    <!-- Architecture -->
+    <div class="result-card">
+        <h3 class="result-card-title">System Architecture</h3>
+        <table class="info-table">
+            <tr><td>Presentation Layer</td><td>HTML/CSS Signal Ops Console</td></tr>
+            <tr><td>Application Layer</td><td>Flask web application</td></tr>
+            <tr><td>Data Layer</td><td>Customer datasets and processed prediction data</td></tr>
+            <tr><td>ML Layer</td><td>Preprocessing, trained classification model and prediction engine</td></tr>
+            <tr><td>Intelligence Layer</td><td>Risk segmentation, recommendations and analytics</td></tr>
+            <tr><td>BI Layer</td><td>Prediction dashboards, reports and Power BI analytics</td></tr>
+        </table>
+    </div>
+
+    <!-- Business Value -->
+    <div class="result-card result-card-wide">
+        <h3 class="result-card-title">Business Value</h3>
+        <ul class="plain-list">
+            <li><strong>Early intervention:</strong> identify high-risk customers before they churn.</li>
+            <li><strong>Prioritization:</strong> focus retention resources on customers with higher predicted risk.</li>
+            <li><strong>Personalization:</strong> use customer-level signals to guide more relevant interventions.</li>
+            <li><strong>Operational efficiency:</strong> automate prediction across individual customers or large datasets.</li>
+            <li><strong>Decision support:</strong> provide dashboards and reports that turn model output into business insight.</li>
+            <li><strong>Retention economics:</strong> support strategies aimed at protecting recurring revenue and customer lifetime value.</li>
+        </ul>
+    </div>
+
+    <!-- Project Objective -->
+    <div class="result-card">
+        <h3 class="result-card-title">Project Objective</h3>
+        <p>
+            The objective of RetainIQ is not simply to predict whether a customer will churn. The larger goal
+            is to create a complete decision-support workflow where a prediction becomes a meaningful business
+            signal and that signal can lead to a timely retention action.
+        </p>
+    </div>
+
+    <!-- Future Scope -->
+    <div class="result-card">
+        <h3 class="result-card-title">Future Scope</h3>
+        <ul class="plain-list">
+            <li>Real-time prediction through CRM and customer-service integrations</li>
+            <li>Automated retention campaign triggering</li>
+            <li>Model monitoring and drift detection</li>
+            <li>Continuous model retraining with new customer behavior</li>
+            <li>Customer lifetime value and revenue-at-risk modeling</li>
+            <li>Advanced explainability and intervention-effect measurement</li>
+        </ul>
+    </div>
+
+    <!-- Closing -->
+    <div class="result-card result-card-wide">
+        <h3 class="result-card-title">From Prediction to Retention</h3>
+        <p>
+            RetainIQ brings together <strong>machine learning, customer analytics and business intelligence</strong>
+            to move churn management from a reactive process to a proactive one. By connecting predictive risk
+            with understandable insights and actionable recommendations, the platform provides a practical
+            foundation for data-driven customer retention.
+        </p>
+        <p class="muted">
+            RetainIQ · Customer Churn Prediction &amp; Retention Intelligence Platform · Signal Ops Console
+        </p>
+    </div>
+
+</div>
 
 {% endblock %}
