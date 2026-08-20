@@ -15,6 +15,7 @@
             <a href="{{ url_for('bulk_prediction') }}" class="btn btn-secondary">Bulk Prediction</a>
             <a href="{{ url_for('prediction_dashboard') }}" class="btn btn-outline">View Dashboard</a>
         </div>
+        <p class="hero-credit"><strong>Designed &amp; Developed by Logesh S.</strong><br>B.Sc. Data Science &middot; Machine Learning &amp; Data Analytics</p>
         {% if not model_ready %}
         <p class="hero-warning">⚠ The prediction model isn't loaded. Predictions are unavailable until models/best_model.pkl is present.</p>
         {% endif %}

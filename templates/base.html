@@ -33,7 +33,6 @@
             <a href="{{ url_for('single_prediction') }}" class="{{ 'active' if request.endpoint == 'single_prediction' }}"><span class="nav-dot"></span>Single Prediction</a>
             <a href="{{ url_for('bulk_prediction') }}" class="{{ 'active' if request.endpoint == 'bulk_prediction' }}"><span class="nav-dot"></span>Bulk Prediction</a>
             <a href="{{ url_for('prediction_dashboard') }}" class="{{ 'active' if request.endpoint == 'prediction_dashboard' }}"><span class="nav-dot"></span>Prediction Dashboard</a>
-            <a href="{{ url_for('powerbi_dashboard') }}" class="{{ 'active' if request.endpoint == 'powerbi_dashboard' }}"><span class="nav-dot"></span>Power BI Dashboard</a>
             <a href="{{ url_for('reports') }}" class="{{ 'active' if request.endpoint == 'reports' }}"><span class="nav-dot"></span>Reports</a>
             <a href="{{ url_for('about') }}" class="{{ 'active' if request.endpoint == 'about' }}"><span class="nav-dot"></span>About</a>
         </nav>

@@ -31,33 +31,40 @@
                 <div class="form-group">
                     <label for="gender">Gender</label>
                     <select id="gender" name="gender">
-                        {% for opt in fields['gender'] %}
+                        {% for field in fields if field.name == 'gender' %}{% for opt in field.options %}
                         <option value="{{ opt }}" {{ 'selected' if form_data.get('gender') == opt }}>{{ opt }}</option>
+                        {% endfor %}{% endfor %}
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label for="SeniorCitizen">Senior Citizen</label>
+                    <select id="SeniorCitizen" name="SeniorCitizen" required>
+                        {% for field in fields if field.name == 'SeniorCitizen' %}
+                        {% for opt in field.options %}
+                        <option value="{{ opt }}" {{ 'selected' if form_data.get('SeniorCitizen', '0') == opt }}>{{ 'Yes' if opt == '1' else 'No' }}</option>
+                        {% endfor %}
                         {% endfor %}
                     </select>
                 </div>
                 <div class="form-group">
-                    <label>Senior Citizen</label>
-                    <div class="radio-row">
-                        <label class="radio-option"><input type="radio" name="SeniorCitizen" value="1" {{ 'checked' if form_data.get('SeniorCitizen') == '1' }}> Yes</label>
-                        <label class="radio-option"><input type="radio" name="SeniorCitizen" value="0" {{ 'checked' if form_data.get('SeniorCitizen', '0') == '0' }}> No</label>
-                    </div>
+                    <label for="Partner">Partner</label>
+                    <select id="Partner" name="Partner" required>
+                        {% for field in fields if field.name == 'Partner' %}
+                        {% for opt in field.options %}
+                        <option value="{{ opt }}" {{ 'selected' if form_data.get('Partner') == opt }}>{{ opt }}</option>
+                        {% endfor %}
+                        {% endfor %}
+                    </select>
                 </div>
                 <div class="form-group">
-                    <label>Partner</label>
-                    <div class="radio-row">
-                        {% for opt in fields['Partner'] %}
-                        <label class="radio-option"><input type="radio" name="Partner" value="{{ opt }}" {{ 'checked' if form_data.get('Partner', 'No') == opt }}> {{ opt }}</label>
+                    <label for="Dependents">Dependents</label>
+                    <select id="Dependents" name="Dependents" required>
+                        {% for field in fields if field.name == 'Dependents' %}
+                        {% for opt in field.options %}
+                        <option value="{{ opt }}" {{ 'selected' if form_data.get('Dependents') == opt }}>{{ opt }}</option>
                         {% endfor %}
-                    </div>
-                </div>
-                <div class="form-group">
-                    <label>Dependents</label>
-                    <div class="radio-row">
-                        {% for opt in fields['Dependents'] %}
-                        <label class="radio-option"><input type="radio" name="Dependents" value="{{ opt }}" {{ 'checked' if form_data.get('Dependents', 'No') == opt }}> {{ opt }}</label>
                         {% endfor %}
-                    </div>
+                    </select>
                 </div>
                 <div class="form-group">
                     <label for="tenure">Tenure (months)</label>
@@ -70,75 +77,77 @@
             <h3 class="form-section-title">Services</h3>
             <div class="form-grid">
                 <div class="form-group">
-                    <label>Phone Service</label>
-                    <div class="radio-row">
-                        {% for opt in fields['PhoneService'] %}
-                        <label class="radio-option"><input type="radio" name="PhoneService" value="{{ opt }}" {{ 'checked' if form_data.get('PhoneService', 'Yes') == opt }}> {{ opt }}</label>
+                    <label for="PhoneService">Phone Service</label>
+                    <select id="PhoneService" name="PhoneService" required>
+                        {% for field in fields if field.name == 'PhoneService' %}
+                        {% for opt in field.options %}
+                        <option value="{{ opt }}" {{ 'selected' if form_data.get('PhoneService') == opt }}>{{ opt }}</option>
                         {% endfor %}
-                    </div>
+                        {% endfor %}
+                    </select>
                 </div>
                 <div class="form-group">
                     <label for="MultipleLines">Multiple Lines</label>
                     <select id="MultipleLines" name="MultipleLines">
-                        {% for opt in fields['MultipleLines'] %}
+                        {% for field in fields if field.name == 'MultipleLines' %}{% for opt in field.options %}
                         <option value="{{ opt }}" {{ 'selected' if form_data.get('MultipleLines') == opt }}>{{ opt }}</option>
-                        {% endfor %}
+                        {% endfor %}{% endfor %}
                     </select>
                 </div>
                 <div class="form-group">
                     <label for="InternetService">Internet Service</label>
                     <select id="InternetService" name="InternetService">
-                        {% for opt in fields['InternetService'] %}
+                        {% for field in fields if field.name == 'InternetService' %}{% for opt in field.options %}
                         <option value="{{ opt }}" {{ 'selected' if form_data.get('InternetService') == opt }}>{{ opt }}</option>
-                        {% endfor %}
+                        {% endfor %}{% endfor %}
                     </select>
                 </div>
                 <div class="form-group">
                     <label for="OnlineSecurity">Online Security</label>
                     <select id="OnlineSecurity" name="OnlineSecurity">
-                        {% for opt in fields['OnlineSecurity'] %}
+                        {% for field in fields if field.name == 'OnlineSecurity' %}{% for opt in field.options %}
                         <option value="{{ opt }}" {{ 'selected' if form_data.get('OnlineSecurity') == opt }}>{{ opt }}</option>
-                        {% endfor %}
+                        {% endfor %}{% endfor %}
                     </select>
                 </div>
                 <div class="form-group">
                     <label for="OnlineBackup">Online Backup</label>
                     <select id="OnlineBackup" name="OnlineBackup">
-                        {% for opt in fields['OnlineBackup'] %}
+                        {% for field in fields if field.name == 'OnlineBackup' %}{% for opt in field.options %}
                         <option value="{{ opt }}" {{ 'selected' if form_data.get('OnlineBackup') == opt }}>{{ opt }}</option>
-                        {% endfor %}
+                        {% endfor %}{% endfor %}
                     </select>
                 </div>
                 <div class="form-group">
                     <label for="DeviceProtection">Device Protection</label>
                     <select id="DeviceProtection" name="DeviceProtection">
-                        {% for opt in fields['DeviceProtection'] %}
+                        {% for field in fields if field.name == 'DeviceProtection' %}{% for opt in field.options %}
                         <option value="{{ opt }}" {{ 'selected' if form_data.get('DeviceProtection') == opt }}>{{ opt }}</option>
-                        {% endfor %}
+                        {% endfor %}{% endfor %}
                     </select>
                 </div>
                 <div class="form-group">
                     <label for="TechSupport">Tech Support</label>
                     <select id="TechSupport" name="TechSupport">
-                        {% for opt in fields['TechSupport'] %}
+                        {% for field in fields if field.name == 'TechSupport' %}{% for opt in field.options %}
                         <option value="{{ opt }}" {{ 'selected' if form_data.get('TechSupport') == opt }}>{{ opt }}</option>
-                        {% endfor %}
+                        {% endfor %}{% endfor %}
                     </select>
                 </div>
                 <div class="form-group">
                     <label for="StreamingTV">Streaming TV</label>
                     <select id="StreamingTV" name="StreamingTV">
-                        {% for opt in fields['StreamingTV'] %}
+                        {% for field in fields if field.name == 'StreamingTV' %}{% for opt in field.options %}
                         <option value="{{ opt }}" {{ 'selected' if form_data.get('StreamingTV') == opt }}>{{ opt }}</option>
-                        {% endfor %}
+                        {% endfor %}{% endfor %}
                     </select>
                 </div>
                 <div class="form-group">
                     <label for="StreamingMovies">Streaming Movies</label>
                     <select id="StreamingMovies" name="StreamingMovies">
-                        {% for opt in fields['StreamingMovies'] %}
+                        {% for field in fields if field.name == 'StreamingMovies' %}{% for opt in field.options %}
                         <option value="{{ opt }}" {{ 'selected' if form_data.get('StreamingMovies') == opt }}>{{ opt }}</option>
-                        {% endfor %}
+                        {% endfor %}{% endfor %}
                     </select>
                 </div>
             </div>
@@ -150,25 +159,27 @@
                 <div class="form-group">
                     <label for="Contract">Contract</label>
                     <select id="Contract" name="Contract">
-                        {% for opt in fields['Contract'] %}
+                        {% for field in fields if field.name == 'Contract' %}{% for opt in field.options %}
                         <option value="{{ opt }}" {{ 'selected' if form_data.get('Contract') == opt }}>{{ opt }}</option>
+                        {% endfor %}{% endfor %}
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label for="PaperlessBilling">Paperless Billing</label>
+                    <select id="PaperlessBilling" name="PaperlessBilling" required>
+                        {% for field in fields if field.name == 'PaperlessBilling' %}
+                        {% for opt in field.options %}
+                        <option value="{{ opt }}" {{ 'selected' if form_data.get('PaperlessBilling') == opt }}>{{ opt }}</option>
+                        {% endfor %}
                         {% endfor %}
                     </select>
                 </div>
                 <div class="form-group">
-                    <label>Paperless Billing</label>
-                    <div class="radio-row">
-                        {% for opt in fields['PaperlessBilling'] %}
-                        <label class="radio-option"><input type="radio" name="PaperlessBilling" value="{{ opt }}" {{ 'checked' if form_data.get('PaperlessBilling', 'Yes') == opt }}> {{ opt }}</label>
-                        {% endfor %}
-                    </div>
-                </div>
-                <div class="form-group">
                     <label for="PaymentMethod">Payment Method</label>
                     <select id="PaymentMethod" name="PaymentMethod">
-                        {% for opt in fields['PaymentMethod'] %}
+                        {% for field in fields if field.name == 'PaymentMethod' %}{% for opt in field.options %}
                         <option value="{{ opt }}" {{ 'selected' if form_data.get('PaymentMethod') == opt }}>{{ opt }}</option>
-                        {% endfor %}
+                        {% endfor %}{% endfor %}
                     </select>
                 </div>
                 <div class="form-group">
