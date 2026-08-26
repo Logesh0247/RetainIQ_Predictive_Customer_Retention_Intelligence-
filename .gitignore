@@ -5,3 +5,8 @@ venv/
 .env
 uploads/*
 reports/.cache_*.pkl
+.vs/
+*.sqlite
+desktop.ini
+.ipynb_checkpoints/
+.pytest_cache/

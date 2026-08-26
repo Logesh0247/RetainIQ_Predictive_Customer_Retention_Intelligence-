@@ -39,8 +39,11 @@
 </form>
 
 <div class="info-panel">
-    <h3>Sample Format</h3>
-    <p>Not sure of the format? A sample dataset matching this schema (<code>sample_customers.csv</code>) ships in the project root — upload it to test the flow end to end.</p>
+    <h3>Try the demo file</h3>
+    <p>Score the bundled sample customer list in one click — no file upload needed.</p>
+    <form method="POST" action="{{ url_for('bulk_prediction_sample') }}" style="margin-top: 12px;">
+        <button type="submit" class="btn btn-secondary" {{ 'disabled' if not model_ready }}>Score sample customers</button>
+    </form>
 </div>
 
 {% endblock %}

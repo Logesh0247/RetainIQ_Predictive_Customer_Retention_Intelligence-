@@ -453,6 +453,27 @@ body:has(#ops-mode:checked) .ops-toggle::after { transform: translateX(18px); ba
 #tab-charges:checked ~ .tab-panels .panel-charges,
 #tab-tenure:checked ~ .tab-panels .panel-tenure { display: block; }
 
+.filter-controls { border-bottom: none; margin-bottom: 12px; }
+#filt-all:checked ~ .filter-controls label[for="filt-all"],
+#filt-high:checked ~ .filter-controls label[for="filt-high"],
+#filt-mtm:checked ~ .filter-controls label[for="filt-mtm"],
+#filt-bill:checked ~ .filter-controls label[for="filt-bill"] { color: var(--action); border-bottom-color: var(--action); }
+
+#filt-high:checked ~ .tab-panels tbody tr:not(.is-high) { display: none; }
+#filt-mtm:checked ~ .tab-panels tbody tr:not(.is-mtm) { display: none; }
+#filt-bill:checked ~ .tab-panels tbody tr:not(.is-high-bill) { display: none; }
+
+.primary-action {
+    font-size: 1.05rem;
+    font-weight: 700;
+    line-height: 1.45;
+    margin: 0;
+    padding: 14px 16px;
+    border-radius: var(--radius-sm);
+    background: var(--action-dim);
+    border: 1px solid color-mix(in srgb, var(--action) 35%, transparent);
+}
+
 /* ---------------------------------------------------------------------
    :target modal (pure CSS) -- customer detail popups
    --------------------------------------------------------------------- */

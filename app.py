@@ -10,15 +10,17 @@ from datetime import datetime
 
 from flask import (
     Flask, render_template, request, redirect, url_for, flash,
-    send_file, abort, session
+    send_file, abort, session, jsonify
 )
 
 from src.preprocessing import PreprocessingError
 from utils.prediction import (
     predict_customer, is_model_available, ModelLoadError, load_model,
+    MODEL_COMPARISON,
 )
 from utils.bulk_prediction import (
     run_bulk_prediction,
+    run_sample_prediction,
     compute_dashboard_kpis,
     save_results_csv,
     build_display_records,
@@ -263,10 +265,64 @@ def server_error(e):
 # ---------------------------------------------------------------------------
 
 def _get_latest_bundle():
-
     path = session.get("latest_bundle_path")
-
     return load_bundle_cache(path) if path else None
+
+
+def _latest_run_file():
+    return os.path.join(app.config["REPORTS_FOLDER"], ".latest_run")
+
+
+def _remember_run(timestamp, csv_filename, cache_path):
+    session["latest_bundle_path"] = cache_path
+    session["latest_results_filename"] = csv_filename
+    session["latest_results_generated_at"] = datetime.now().strftime("%d %b %Y, %I:%M %p")
+    try:
+        with open(_latest_run_file(), "w", encoding="utf-8") as handle:
+            handle.write(timestamp)
+    except OSError:
+        pass
+
+
+def _newest_cache_path():
+    folder = app.config["REPORTS_FOLDER"]
+    if not os.path.isdir(folder):
+        return None
+    caches = [
+        os.path.join(folder, name)
+        for name in os.listdir(folder)
+        if name.startswith(".cache_") and name.endswith(".pkl")
+    ]
+    if not caches:
+        return None
+    return max(caches, key=os.path.getmtime)
+
+
+def _load_run_bundle(run=None):
+    run = (run or request.args.get("run") or "").strip()
+    if not run:
+        try:
+            with open(_latest_run_file(), encoding="utf-8") as handle:
+                run = handle.read().strip()
+        except OSError:
+            run = ""
+
+    if run and all(ch.isalnum() or ch == "_" for ch in run):
+        path = os.path.join(app.config["REPORTS_FOLDER"], f".cache_{run}.pkl")
+        bundle = load_bundle_cache(path)
+        if bundle is not None:
+            return bundle, f"retainiq_predictions_{run}.csv", run
+
+    bundle = _get_latest_bundle()
+    if bundle is not None:
+        return bundle, session.get("latest_results_filename"), None
+
+    path = _newest_cache_path()
+    bundle = load_bundle_cache(path)
+    if bundle is not None and path:
+        stamp = os.path.basename(path)[len(".cache_"):-4]
+        return bundle, f"retainiq_predictions_{stamp}.csv", stamp
+    return None, None, None
 
 
 # ---------------------------------------------------------------------------
@@ -275,7 +331,6 @@ def _get_latest_bundle():
 
 @app.route("/")
 def home():
-
     return render_template(
         "home.html",
         model_ready=is_model_available()
@@ -320,6 +375,7 @@ def single_prediction():
             risk_css=result["risk_css"],
             signal_bars=result["signal_bars"],
             recommendations=recommendations,
+            primary_action=recommendations[0] if recommendations else "Monitor account.",
             top_drivers=result["top_drivers"],
             model_name=result["model_name"],
             form_data=form_data,
@@ -353,70 +409,60 @@ def single_prediction():
 # Bulk prediction
 # ---------------------------------------------------------------------------
 
+def _render_bulk_results(bundle):
+    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+    csv_filename = f"retainiq_predictions_{timestamp}.csv"
+    save_results_csv(bundle["results_df"], csv_filename)
+    cache_path = save_bundle_cache(bundle, timestamp)
+    _remember_run(timestamp, csv_filename, cache_path)
+    return redirect(url_for("bulk_results_view", run=timestamp))
+
+
+@app.route("/bulk-results")
+def bulk_results_view():
+    bundle, download_filename, run_id = _load_run_bundle()
+    if bundle is None:
+        flash("Run a bulk prediction first — choose a CSV or use the sample file.", "error")
+        return redirect(url_for("bulk_prediction"))
+
+    kpis = compute_dashboard_kpis(bundle["results_df"])
+    total_rows = len(bundle["results_df"])
+    return render_template(
+        "bulk_results.html",
+        kpis=kpis,
+        download_filename=download_filename,
+        records_by_prob=build_display_records(bundle, sort_by="probability")[:MAX_DISPLAY_ROWS],
+        records_by_charges=build_display_records(bundle, sort_by="charges")[:MAX_DISPLAY_ROWS],
+        records_by_tenure=build_display_records(bundle, sort_by="tenure")[:MAX_DISPLAY_ROWS],
+        max_display_rows=MAX_DISPLAY_ROWS,
+        total_rows=total_rows,
+        run_id=run_id,
+    )
+
+
 @app.route("/bulk-prediction", methods=["GET", "POST"])
 def bulk_prediction():
 
     if request.method == "GET":
-
-        return render_template("bulk_prediction.html",model_ready=is_model_available())
+        return render_template("bulk_prediction.html", model_ready=is_model_available())
 
     try:
-
         bundle = run_bulk_prediction(request.files.get("customer_csv"))
-
     except BulkPredictionError as exc:
-
         flash(str(exc), "error")
+        return render_template("bulk_prediction.html", model_ready=is_model_available())
 
-        return render_template("bulk_prediction.html",model_ready=is_model_available())
+    return _render_bulk_results(bundle)
 
-    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
 
-    csv_filename = (f"retainiq_predictions_{timestamp}.csv")
-
-    save_results_csv(bundle["results_df"],csv_filename)
-
-    # Save complete prediction bundle.
-    cache_path = save_bundle_cache(bundle,timestamp)
-
-    # Store latest run for normal Prediction Dashboard.
-    session["latest_bundle_path"] = cache_path
-
-    session["latest_results_filename"] = csv_filename
-
-    session["latest_results_generated_at"] = (
-        datetime.now().strftime(
-            "%d %b %Y, %I:%M %p"
-        )
-    )
-
-    kpis = compute_dashboard_kpis(
-        bundle["results_df"]
-    )
-
-    total_rows = len(
-        bundle["results_df"]
-    )
-
-    return render_template(
-        "bulk_results.html",
-        kpis=kpis,
-        download_filename=csv_filename,
-        records_by_prob=build_display_records(
-            bundle,
-            sort_by="probability"
-        )[:MAX_DISPLAY_ROWS],
-        records_by_charges=build_display_records(
-            bundle,
-            sort_by="charges"
-        )[:MAX_DISPLAY_ROWS],
-        records_by_tenure=build_display_records(
-            bundle,
-            sort_by="tenure"
-        )[:MAX_DISPLAY_ROWS],
-        max_display_rows=MAX_DISPLAY_ROWS,
-        total_rows=total_rows,
-    )
+@app.route("/bulk-prediction/sample", methods=["POST"])
+def bulk_prediction_sample():
+    try:
+        bundle = run_sample_prediction()
+    except BulkPredictionError as exc:
+        flash(str(exc), "error")
+        return render_template("bulk_prediction.html", model_ready=is_model_available())
+    return _render_bulk_results(bundle)
 
 
 # ---------------------------------------------------------------------------
@@ -448,35 +494,28 @@ def download_results(filename):
 
 @app.route("/dashboard")
 def prediction_dashboard():
-
-    bundle = _get_latest_bundle()
+    bundle, download_filename, run_id = _load_run_bundle()
 
     if bundle is None:
-
         return render_template(
             "prediction_dashboard.html",
             kpis=None,
-            generated_at=None
+            generated_at=None,
         )
 
-    kpis = compute_dashboard_kpis(
-        bundle["results_df"]
-    )
-
-    top_risk = build_top_risk_records(
-        bundle
-    )
+    kpis = compute_dashboard_kpis(bundle["results_df"])
+    top_risk = build_top_risk_records(bundle)
+    generated_at = session.get("latest_results_generated_at")
+    if not generated_at and run_id:
+        generated_at = run_id.replace("_", " ")
 
     return render_template(
         "prediction_dashboard.html",
         kpis=kpis,
         top_risk=top_risk,
-        generated_at=session.get(
-            "latest_results_generated_at"
-        ),
-        download_filename=session.get(
-            "latest_results_filename"
-        ),
+        generated_at=generated_at,
+        download_filename=download_filename,
+        run_id=run_id,
     )
 
 
@@ -677,8 +716,52 @@ def about():
     return render_template(
         "about.html",
         model_name=model_name,
-        metrics=metrics
+        metrics=metrics,
+        comparison=MODEL_COMPARISON,
     )
+
+
+# ---------------------------------------------------------------------------
+# JSON API (same model as the UI)
+# ---------------------------------------------------------------------------
+
+@app.route("/api/health")
+def api_health():
+    return jsonify({
+        "status": "Running",
+        "model_ready": is_model_available(),
+        "model": (load_model() or {}).get("name"),
+    })
+
+
+@app.route("/api/predict", methods=["POST"])
+def api_predict():
+    payload = request.get_json(silent=True)
+    if not isinstance(payload, dict):
+        return jsonify({"error": "Send a JSON object with customer fields."}), 400
+    try:
+        result = predict_customer(payload)
+        recs = generate_recommendation(
+            result["cleaned_record"],
+            result["probability"],
+            result["risk_level"],
+        )
+        return jsonify({
+            "customer_id": str(result["cleaned_record"].get("customerID", "")),
+            "probability": result["probability"],
+            "probability_pct": result["probability_pct"],
+            "prediction": result["prediction_label"],
+            "risk_level": result["risk_level"],
+            "top_drivers": result["top_drivers"],
+            "primary_action": recs[0] if recs else "Monitor account.",
+            "recommendations": recs,
+            "model_name": result["model_name"],
+        })
+    except (PreprocessingError, ModelLoadError) as exc:
+        return jsonify({"error": str(exc)}), 400
+    except Exception as exc:
+        logger.exception("API prediction failed")
+        return jsonify({"error": str(exc)}), 500
 
 
 # ---------------------------------------------------------------------------

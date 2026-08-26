@@ -1,52 +1,27 @@
-from pydantic import BaseModel
+from typing import Optional
+from pydantic import BaseModel, Field
 
 
 class CustomerRequest(BaseModel):
+    """Raw Telco fields accepted by /api/predict."""
 
-    Tenure_Months: float
-    Monthly_Charges: float
-    Total_Charges: float
-    Churn_Score: float
-    CLTV: float
-    Revenue_Per_Month: float
-    Customer_Value: float
-    Service_Count: float
-
-    Gender_Male: int
-    Senior_Citizen_Yes: int
-    Partner_Yes: int
-    Dependents_Yes: int
-    Phone_Service_Yes: int
-
-    Multiple_Lines_No_phone_service: int
-    Multiple_Lines_Yes: int
-
-    Internet_Service_Fiber_optic: int
-    Internet_Service_No: int
-
-    Online_Security_No_internet_service: int
-    Online_Security_Yes: int
-
-    Online_Backup_No_internet_service: int
-    Online_Backup_Yes: int
-
-    Device_Protection_No_internet_service: int
-    Device_Protection_Yes: int
-
-    Tech_Support_No_internet_service: int
-    Tech_Support_Yes: int
-
-    Streaming_TV_No_internet_service: int
-    Streaming_TV_Yes: int
-
-    Streaming_Movies_No_internet_service: int
-    Streaming_Movies_Yes: int
-
-    Contract_One_year: int
-    Contract_Two_year: int
-
-    Paperless_Billing_Yes: int
-
-    Payment_Method_Credit_card_automatic: int
-    Payment_Method_Electronic_check: int
-    Payment_Method_Mailed_check: int
+    customerID: Optional[str] = None
+    gender: str
+    SeniorCitizen: int = Field(..., ge=0, le=1)
+    Partner: str
+    Dependents: str
+    tenure: int
+    PhoneService: str
+    MultipleLines: str
+    InternetService: str
+    OnlineSecurity: str
+    OnlineBackup: str
+    DeviceProtection: str
+    TechSupport: str
+    StreamingTV: str
+    StreamingMovies: str
+    Contract: str
+    PaperlessBilling: str
+    PaymentMethod: str
+    MonthlyCharges: float
+    TotalCharges: Optional[float] = None
