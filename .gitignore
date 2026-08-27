@@ -5,6 +5,9 @@ venv/
 .env
 uploads/*
 reports/.cache_*.pkl
+reports/.latest_run
+reports/private/
+reports/runs/
 .vs/
 *.sqlite
 desktop.ini

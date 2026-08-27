@@ -42,7 +42,7 @@
 </p>
 
 <div class="table-actions">
-    <a href="{{ url_for('download_results', filename=download_filename) }}" class="btn btn-primary">Download Power BI CSV</a>
+    <a href="{{ url_for('download_results', filename=download_filename) }}" class="btn btn-primary">Download CSV</a>
     <a href="{{ url_for('prediction_dashboard', run=run_id) if run_id else url_for('prediction_dashboard') }}" class="btn btn-secondary">View Full Dashboard</a>
     {% if total_rows > max_display_rows %}
     <span class="table-note">Showing the first {{ max_display_rows }} of {{ total_rows }} customers per view — the CSV download has all {{ total_rows }}.</span>

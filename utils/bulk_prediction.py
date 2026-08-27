@@ -253,14 +253,18 @@ def compute_dashboard_kpis(results_df):
     }
 
 
-def save_results_csv(results_df, filename):
-    path = os.path.join(REPORTS_DIR, filename)
+def save_results_csv(results_df, filename, directory=None):
+    directory = directory or REPORTS_DIR
+    os.makedirs(directory, exist_ok=True)
+    path = os.path.join(directory, filename)
     results_df.to_csv(path, index=False)
     return path
 
 
-def save_bundle_cache(bundle, cache_key):
-    path = os.path.join(REPORTS_DIR, f".cache_{cache_key}.pkl")
+def save_bundle_cache(bundle, cache_key, directory=None):
+    directory = directory or REPORTS_DIR
+    os.makedirs(directory, exist_ok=True)
+    path = os.path.join(directory, f".cache_{cache_key}.pkl")
     with open(path, "wb") as handle:
         pickle.dump(bundle, handle)
     return path

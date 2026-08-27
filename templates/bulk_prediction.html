@@ -22,7 +22,7 @@
 </div>
 
 <div class="upload-layout">
-    <form class="form-card upload-card" method="POST" action="{{ url_for('bulk_prediction') }}" enctype="multipart/form-data">
+    <form class="form-card upload-card" id="bulk-upload-form" method="POST" action="{{ url_for('bulk_prediction') }}" enctype="multipart/form-data">
         <h3 class="form-section-title">Upload CSV</h3>
 
         <label class="drop-zone" id="drop-zone" for="customer_csv">
@@ -60,7 +60,7 @@
         </details>
 
         <div class="form-actions">
-            <button type="submit" class="btn btn-primary" {{ 'disabled' if not model_ready }}>Upload &amp; Predict</button>
+            <button type="submit" class="btn btn-primary" id="bulk-submit" {{ 'disabled' if not model_ready }}>Upload &amp; Predict</button>
         </div>
     </form>
 </div>
@@ -96,6 +96,15 @@
       showName(e.dataTransfer.files[0]);
     }
   });
+  var form = document.getElementById("bulk-upload-form");
+  var submitBtn = document.getElementById("bulk-submit");
+  if (form && submitBtn) {
+    form.addEventListener("submit", function () {
+      if (!input.files || !input.files[0]) return;
+      submitBtn.disabled = true;
+      submitBtn.textContent = "Scoring customers…";
+    });
+  }
 })();
 </script>
 

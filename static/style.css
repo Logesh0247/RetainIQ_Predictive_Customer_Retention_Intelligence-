@@ -319,6 +319,7 @@ body:has(#ops-mode:checked) .ops-toggle::after { transform: translateX(18px); ba
 .upload-layout { display: block; max-width: 720px; }
 .upload-card { padding: 22px 22px 20px; }
 .drop-zone {
+    position: relative;
     display: flex; flex-direction: column; align-items: center; justify-content: center;
     gap: 8px; text-align: center; cursor: pointer;
     border: 1.5px dashed var(--line); border-radius: 12px;

@@ -5,13 +5,16 @@ RetainIQ -- Customer Churn Prediction & Retention Intelligence Platform.
 """
 
 import os
+import re
+import secrets
 import logging
-from datetime import datetime
+from datetime import datetime, timedelta
 
 from flask import (
     Flask, render_template, request, redirect, url_for, flash,
-    send_file, abort, session, jsonify
+    send_file, abort, session, jsonify, g
 )
+from werkzeug.middleware.proxy_fix import ProxyFix
 
 from src.preprocessing import PreprocessingError
 from utils.prediction import (
@@ -197,6 +200,7 @@ FORM_FIELDS = [
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 
 app = Flask(__name__)
+app.wsgi_app = ProxyFix(app.wsgi_app, x_for=1, x_proto=1, x_host=1)
 
 app.secret_key = os.environ.get(
     "RETAINIQ_SECRET_KEY",
@@ -204,6 +208,16 @@ app.secret_key = os.environ.get(
 )
 
 app.config["MAX_CONTENT_LENGTH"] = 10 * 1024 * 1024
+app.config["SESSION_COOKIE_NAME"] = "retainiq_session"
+app.config["SESSION_COOKIE_HTTPONLY"] = True
+app.config["SESSION_COOKIE_PATH"] = "/"
+app.config["PERMANENT_SESSION_LIFETIME"] = timedelta(days=400)
+app.config["SESSION_REFRESH_EACH_REQUEST"] = True
+
+VISITOR_COOKIE = "retainiq_vid"
+RUNS_COOKIE = "retainiq_runs"
+VISITOR_ID_RE = re.compile(r"^[A-Za-z0-9_-]{16,64}$")
+RUN_ID_RE = re.compile(r"^[0-9]{8}_[0-9]{6}_[0-9a-f]{16}$")
 
 app.config["UPLOAD_FOLDER"] = os.path.join(
     BASE_DIR,
@@ -261,67 +275,133 @@ def server_error(e):
 
 
 # ---------------------------------------------------------------------------
-# Helper: latest bundle
+# Private per-visitor reports (this browser only — never a shared archive)
 # ---------------------------------------------------------------------------
 
-def _get_latest_bundle():
-    path = session.get("latest_bundle_path")
-    return load_bundle_cache(path) if path else None
+def _cookie_kwargs():
+    # Preview is HTTPS inside an iframe: SameSite=None; Secure; Partitioned
+    # (CHIPS) so the browser keeps the cookie. The test client uses http://.
+    secure = not app.config.get("TESTING")
+    return {
+        "httponly": True,
+        "samesite": "None" if secure else "Lax",
+        "secure": secure,
+        "path": "/",
+        "max_age": int(timedelta(days=400).total_seconds()),
+        "partitioned": secure,
+    }
 
 
-def _latest_run_file():
-    return os.path.join(app.config["REPORTS_FOLDER"], ".latest_run")
+app.config["SESSION_COOKIE_SAMESITE"] = "None"
+app.config["SESSION_COOKIE_SECURE"] = True
+app.config["SESSION_COOKIE_PARTITIONED"] = True
 
 
-def _remember_run(timestamp, csv_filename, cache_path):
+@app.before_request
+def _prepare_private_workspace():
+    if app.config.get("TESTING"):
+        app.config["SESSION_COOKIE_SAMESITE"] = "Lax"
+        app.config["SESSION_COOKIE_SECURE"] = False
+        app.config["SESSION_COOKIE_PARTITIONED"] = False
+    session.permanent = True
+    vid = request.cookies.get(VISITOR_COOKIE) or session.get("visitor_id")
+    if not vid or not VISITOR_ID_RE.match(str(vid)):
+        vid = secrets.token_urlsafe(18)
+    session["visitor_id"] = vid
+    g.visitor_id = vid
+    owned = list(session.get("user_runs") or [])
+    for item in (request.cookies.get(RUNS_COOKIE) or "").split(","):
+        item = item.strip()
+        if RUN_ID_RE.match(item) and item not in owned:
+            owned.append(item)
+    session["user_runs"] = owned
+
+
+@app.after_request
+def _refresh_private_cookies(response):
+    kwargs = _cookie_kwargs()
+    vid = getattr(g, "visitor_id", None) or session.get("visitor_id")
+    if vid and VISITOR_ID_RE.match(str(vid)):
+        response.set_cookie(VISITOR_COOKIE, vid, **kwargs)
+    owned = [item for item in (session.get("user_runs") or []) if RUN_ID_RE.match(str(item))]
+    if owned:
+        response.set_cookie(RUNS_COOKIE, ",".join(owned[-40:]), **kwargs)
+    return response
+
+
+def _runs_root():
+    path = os.path.join(app.config["REPORTS_FOLDER"], "runs")
+    os.makedirs(path, exist_ok=True)
+    return path
+
+
+def _run_folder(run_id, create=False):
+    if not run_id or not RUN_ID_RE.match(str(run_id)):
+        return None
+    path = os.path.join(_runs_root(), run_id)
+    if create:
+        os.makedirs(path, exist_ok=True)
+        return path
+    return path if os.path.isdir(path) else None
+
+
+def _csv_name(run_id):
+    return f"retainiq_predictions_{run_id}.csv"
+
+
+def _run_id_from_filename(filename):
+    filename = os.path.basename(filename or "")
+    prefix = "retainiq_predictions_"
+    if filename.startswith(prefix) and filename.lower().endswith(".csv"):
+        return filename[len(prefix):-4]
+    return filename
+
+
+def _owned_run_ids():
+    return [item for item in (session.get("user_runs") or []) if RUN_ID_RE.match(str(item))]
+
+
+def _remember_run(run_id, csv_filename, cache_path):
     session["latest_bundle_path"] = cache_path
     session["latest_results_filename"] = csv_filename
     session["latest_results_generated_at"] = datetime.now().strftime("%d %b %Y, %I:%M %p")
-    try:
-        with open(_latest_run_file(), "w", encoding="utf-8") as handle:
-            handle.write(timestamp)
-    except OSError:
-        pass
+    owned = _owned_run_ids()
+    if run_id not in owned:
+        owned.append(run_id)
+    session["user_runs"] = owned
+    session.modified = True
 
 
-def _newest_cache_path():
-    folder = app.config["REPORTS_FOLDER"]
-    if not os.path.isdir(folder):
-        return None
-    caches = [
-        os.path.join(folder, name)
-        for name in os.listdir(folder)
-        if name.startswith(".cache_") and name.endswith(".pkl")
-    ]
-    if not caches:
-        return None
-    return max(caches, key=os.path.getmtime)
+def _owns_report(filename):
+    run_id = _run_id_from_filename(filename)
+    return bool(run_id) and run_id in _owned_run_ids()
+
+
+def _bundle_from_run(run_id):
+    folder = _run_folder(run_id)
+    if not folder:
+        return None, None, None
+    bundle = load_bundle_cache(os.path.join(folder, f".cache_{run_id}.pkl"))
+    if bundle is None:
+        return None, None, None
+    return bundle, _csv_name(run_id), run_id
 
 
 def _load_run_bundle(run=None):
+    """Load a scored run. ?run= is enough — cookies are not required to view results."""
     run = (run or request.args.get("run") or "").strip()
-    if not run:
-        try:
-            with open(_latest_run_file(), encoding="utf-8") as handle:
-                run = handle.read().strip()
-        except OSError:
-            run = ""
+    if run:
+        return _bundle_from_run(run)
 
-    if run and all(ch.isalnum() or ch == "_" for ch in run):
-        path = os.path.join(app.config["REPORTS_FOLDER"], f".cache_{run}.pkl")
-        bundle = load_bundle_cache(path)
+    latest = session.get("latest_results_filename")
+    if latest:
+        bundle, name, run_id = _bundle_from_run(_run_id_from_filename(latest))
         if bundle is not None:
-            return bundle, f"retainiq_predictions_{run}.csv", run
+            return bundle, name, run_id
 
-    bundle = _get_latest_bundle()
-    if bundle is not None:
-        return bundle, session.get("latest_results_filename"), None
-
-    path = _newest_cache_path()
-    bundle = load_bundle_cache(path)
-    if bundle is not None and path:
-        stamp = os.path.basename(path)[len(".cache_"):-4]
-        return bundle, f"retainiq_predictions_{stamp}.csv", stamp
+    owned = _owned_run_ids()
+    if owned:
+        return _bundle_from_run(owned[-1])
     return None, None, None
 
 
@@ -410,12 +490,13 @@ def single_prediction():
 # ---------------------------------------------------------------------------
 
 def _render_bulk_results(bundle):
-    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-    csv_filename = f"retainiq_predictions_{timestamp}.csv"
-    save_results_csv(bundle["results_df"], csv_filename)
-    cache_path = save_bundle_cache(bundle, timestamp)
-    _remember_run(timestamp, csv_filename, cache_path)
-    return redirect(url_for("bulk_results_view", run=timestamp))
+    run_id = datetime.now().strftime("%Y%m%d_%H%M%S") + "_" + secrets.token_hex(8)
+    csv_filename = _csv_name(run_id)
+    folder = _run_folder(run_id, create=True)
+    save_results_csv(bundle["results_df"], csv_filename, directory=folder)
+    cache_path = save_bundle_cache(bundle, run_id, directory=folder)
+    _remember_run(run_id, csv_filename, cache_path)
+    return redirect(url_for("bulk_results_view", run=run_id))
 
 
 @app.route("/bulk-results")
@@ -471,20 +552,24 @@ def bulk_prediction_sample():
 
 @app.route("/download-results/<path:filename>")
 def download_results(filename):
-
-    safe_path = os.path.join(
-        app.config["REPORTS_FOLDER"],
-        os.path.basename(filename)
-    )
-
-    if not os.path.exists(safe_path):
-
+    filename = os.path.basename(filename)
+    run_id = (request.args.get("run") or "").strip() or _run_id_from_filename(filename)
+    folder = _run_folder(run_id)
+    if not folder:
         abort(404)
+
+    safe_path = os.path.join(folder, filename)
+    if not os.path.isfile(safe_path):
+        csvs = [name for name in os.listdir(folder) if name.lower().endswith(".csv")]
+        if not csvs:
+            abort(404)
+        filename = csvs[0]
+        safe_path = os.path.join(folder, filename)
 
     return send_file(
         safe_path,
         as_attachment=True,
-        download_name=os.path.basename(filename)
+        download_name=filename
     )
 
 
@@ -530,38 +615,8 @@ def prediction_dashboard():
 def review_dashboard(filename):
 
     filename = os.path.basename(filename)
-
-    # Only CSV reports can be reviewed.
-    if not filename.lower().endswith(".csv"):
-
-        abort(404)
-
-    # Convert:
-    #
-    # retainiq_predictions_20260817_120000.csv
-    #
-    # into:
-    #
-    # .cache_20260817_120000.pkl
-    #
-    timestamp_part = filename[:-4]
-
-    prefix = "retainiq_predictions_"
-
-    if not timestamp_part.startswith(prefix):
-
-        abort(404)
-
-    timestamp = timestamp_part[len(prefix):]
-
-    cache_filename = f".cache_{timestamp}.pkl"
-
-    cache_path = os.path.join(
-        app.config["REPORTS_FOLDER"],
-        cache_filename
-    )
-
-    bundle = load_bundle_cache(cache_path)
+    run_id = _run_id_from_filename(filename)
+    bundle, filename, run_id = _bundle_from_run(run_id)
 
     if bundle is None:
 
@@ -575,11 +630,12 @@ def review_dashboard(filename):
 
     # Use the CSV file's actual modification time
     # so the dashboard identifies the historical run correctly.
-    report_path = os.path.join(app.config["REPORTS_FOLDER"],filename)
+    folder = _run_folder(run_id)
+    report_path = os.path.join(folder, filename) if folder else None
 
     generated_at = None
 
-    if os.path.exists(report_path):
+    if report_path and os.path.exists(report_path):
 
         generated_at = datetime.fromtimestamp(
             os.path.getmtime(report_path)
@@ -601,90 +657,37 @@ def review_dashboard(filename):
 
 @app.route("/reports")
 def reports():
-
     report_files = []
-
-    if os.path.isdir(
-        app.config["REPORTS_FOLDER"]
-    ):
-
-        for fname in sorted(
-            os.listdir(
-                app.config["REPORTS_FOLDER"]
-            ),
-            reverse=True
-        ):
-
-            if not fname.lower().endswith(".csv"):
-
+    for run_id in reversed(_owned_run_ids()):
+        folder = _run_folder(run_id)
+        if not folder:
+            continue
+        fname = _csv_name(run_id)
+        fpath = os.path.join(folder, fname)
+        if not os.path.isfile(fpath):
+            csvs = [name for name in os.listdir(folder) if name.lower().endswith(".csv")]
+            if not csvs:
                 continue
-
-            fpath = os.path.join(
-                app.config["REPORTS_FOLDER"],
-                fname
+            fname = csvs[0]
+            fpath = os.path.join(folder, fname)
+        try:
+            size_kb = round(os.path.getsize(fpath) / 1024, 1)
+            modified = datetime.fromtimestamp(os.path.getmtime(fpath)).strftime(
+                "%d %b %Y, %I:%M %p"
             )
-
-            try:
-
-                size_kb = round(
-                    os.path.getsize(fpath) / 1024,
-                    1
-                )
-
-                modified = datetime.fromtimestamp(
-                    os.path.getmtime(fpath)
-                ).strftime(
-                    "%d %b %Y, %I:%M %p"
-                )
-
-                with open(
-                    fpath,
-                    encoding="utf-8"
-                ) as f:
-
-                    row_count = max(
-                        sum(1 for _ in f) - 1,
-                        0
-                    )
-
-                # Check whether the matching
-                # prediction bundle exists.
-                timestamp_part = fname[:-4]
-
-                prefix = "retainiq_predictions_"
-
-                dashboard_available = False
-
-                if timestamp_part.startswith(prefix):
-
-                    timestamp = timestamp_part[
-                        len(prefix):
-                    ]
-
-                    cache_filename = (
-                        f".cache_{timestamp}.pkl"
-                    )
-
-                    cache_path = os.path.join(
-                        app.config["REPORTS_FOLDER"],
-                        cache_filename
-                    )
-
-                    dashboard_available = os.path.exists(
-                        cache_path
-                    )
-
-                report_files.append({
-                    "filename": fname,
-                    "size_kb": size_kb,
-                    "modified": modified,
-                    "row_count": row_count,
-                    "dashboard_available": dashboard_available,
-                })
-
-            except OSError:
-
-                continue
+            with open(fpath, encoding="utf-8") as f:
+                row_count = max(sum(1 for _ in f) - 1, 0)
+            cache_path = os.path.join(folder, f".cache_{run_id}.pkl")
+            report_files.append({
+                "filename": fname,
+                "size_kb": size_kb,
+                "modified": modified,
+                "row_count": row_count,
+                "dashboard_available": os.path.exists(cache_path),
+                "run_id": run_id,
+            })
+        except OSError:
+            continue
 
     return render_template(
         "reports.html",
