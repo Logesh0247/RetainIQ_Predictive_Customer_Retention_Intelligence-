@@ -1,4 +1,5 @@
-FROM python:3.13-slim
+# Keep this in sync with runtime.txt (Heroku pins python-3.11.x)
+FROM python:3.11-slim
 
 WORKDIR /app
 

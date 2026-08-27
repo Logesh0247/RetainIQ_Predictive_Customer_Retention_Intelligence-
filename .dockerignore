@@ -2,8 +2,41 @@ __pycache__/
 *.pyc
 *.pyo
 *.pyd
-.env
+.pytest_cache/
+.ipynb_checkpoints/
+
+# VCS / CI
 .git
 .gitignore
-.vscode
-.ipynb_checkpoints
+
+# Secrets
+.env
+.env.*
+
+# Local environments
+.venv/
+venv/
+
+# Generated artifacts (created at runtime; keeps the image small)
+uploads/*
+logs/*
+reports/private/
+reports/runs/
+reports/.cache_*.pkl
+reports/.latest_run
+reports/*.csv
+
+# Editor / OS
+.vs/
+.vscode/
+.idea/
+*.sqlite
+*.db
+.DS_Store
+desktop.ini
+Thumbs.db
+
+# Docs & tests not needed to serve the app
+README.md
+*.md
+tests/

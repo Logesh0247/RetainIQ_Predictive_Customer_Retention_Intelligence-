@@ -1,15 +1,45 @@
+# Python
 __pycache__/
-*.pyc
+*.py[cod]
+*.egg-info/
+.pytest_cache/
+.ipynb_checkpoints/
+
+# Virtual environments
 .venv/
 venv/
+env/
+
+# Environment / secrets
 .env
+.env.*
+
+# User uploads
 uploads/*
-reports/.cache_*.pkl
-reports/.latest_run
+
+# Generated prediction reports (per-visitor artifacts created at runtime)
 reports/private/
 reports/runs/
+reports/.cache_*.pkl
+reports/.latest_run
+reports/*.csv
+# Keep the reports directory itself in the repo
+!reports/.gitkeep
+
+# Application logs (ignore contents, keep the folder placeholder)
+logs/*
+!logs/.gitkeep
+
+# Editor / IDE
 .vs/
+.vscode/
+.idea/
+
+# Databases
 *.sqlite
+*.db
+
+# OS files
 desktop.ini
-.ipynb_checkpoints/
-.pytest_cache/
+.DS_Store
+Thumbs.db
