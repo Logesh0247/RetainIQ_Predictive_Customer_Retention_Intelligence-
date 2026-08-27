@@ -49,353 +49,130 @@
 
 {% else %}
 
-
-<!-- =========================================================
-     KPI OVERVIEW
-     ========================================================= -->
-
 <div class="section-eyebrow">PORTFOLIO OVERVIEW</div>
 
 <div class="kpi-grid">
 
-    <!-- 01 -->
     <div class="kpi-card">
-        <div class="kpi-label">
-            Total Customers
-        </div>
-
-        <div class="kpi-value">
-            {{ kpis.total_customers }}
-        </div>
+        <div class="kpi-label">Total Customers</div>
+        <div class="kpi-value">{{ kpis.total_customers }}</div>
     </div>
 
-
-    <!-- 02 -->
     <div class="kpi-card kpi-danger">
         <div class="kpi-label">
             Predicted Churners
-
-            <span class="info-dot">
-                i
-                <span class="tooltip">
-                    Customers with churn probability of 50% or higher.
-                </span>
-            </span>
+            <span class="info-dot">i<span class="tooltip">Customers with churn probability of 50% or higher.</span></span>
         </div>
-
-        <div class="kpi-value">
-            {{ kpis.predicted_churners }}
-        </div>
+        <div class="kpi-value">{{ kpis.predicted_churners }}</div>
     </div>
 
-
-    <!-- 03 -->
     <div class="kpi-card kpi-danger">
-        <div class="kpi-label">
-            Churn Rate
-        </div>
-
-        <div class="kpi-value">
-            {{ kpis.churn_rate }}%
-        </div>
+        <div class="kpi-label">Churn Rate</div>
+        <div class="kpi-value">{{ kpis.churn_rate }}%</div>
     </div>
 
-
-    <!-- 04 -->
     <div class="kpi-card">
-        <div class="kpi-label">
-            Avg. Probability
-        </div>
-
-        <div class="kpi-value">
-            {{ kpis.avg_churn_probability }}%
-        </div>
+        <div class="kpi-label">Avg. Probability</div>
+        <div class="kpi-value">{{ kpis.avg_churn_probability }}%</div>
     </div>
 
-
-    <!-- 05 -->
     <div class="kpi-card kpi-danger">
         <div class="kpi-label">
             High Risk
-
-            <span class="info-dot">
-                i
-                <span class="tooltip">
-                    Customers with churn probability of 60% or higher.
-                </span>
-            </span>
+            <span class="info-dot">i<span class="tooltip">Customers with churn probability of 60% or higher.</span></span>
         </div>
-
-        <div class="kpi-value">
-            {{ kpis.high_risk_count }}
-        </div>
+        <div class="kpi-value">{{ kpis.high_risk_count }}</div>
     </div>
 
-
-    <!-- 06 -->
     <div class="kpi-card kpi-warning">
         <div class="kpi-label">
             Medium Risk
-
-            <span class="info-dot">
-                i
-                <span class="tooltip">
-                    Customers with churn probability from 30% to below 60%.
-                </span>
-            </span>
+            <span class="info-dot">i<span class="tooltip">Customers with churn probability from 30% to below 60%.</span></span>
         </div>
-
-        <div class="kpi-value">
-            {{ kpis.medium_risk_count }}
-        </div>
+        <div class="kpi-value">{{ kpis.medium_risk_count }}</div>
     </div>
 
-
-    <!-- 07 -->
     <div class="kpi-card kpi-success">
         <div class="kpi-label">
             Low Risk
-
-            <span class="info-dot">
-                i
-                <span class="tooltip">
-                    Customers with churn probability below 30%.
-                </span>
-            </span>
+            <span class="info-dot">i<span class="tooltip">Customers with churn probability below 30%.</span></span>
         </div>
-
-        <div class="kpi-value">
-            {{ kpis.low_risk_count }}
-        </div>
+        <div class="kpi-value">{{ kpis.low_risk_count }}</div>
     </div>
 
-
-    <!-- 08 -->
     <div class="kpi-card">
-        <div class="kpi-label">
-            Avg. Monthly Charges
-        </div>
-
-        <div class="kpi-value">
-            ${{ kpis.avg_monthly_charges }}
-        </div>
+        <div class="kpi-label">Avg. Monthly Charges</div>
+        <div class="kpi-value">${{ kpis.avg_monthly_charges }}</div>
     </div>
 
-
-    <!-- 09 -->
     <div class="kpi-card">
-        <div class="kpi-label">
-            Avg. Tenure
-        </div>
-
-        <div class="kpi-value">
-            {{ kpis.avg_tenure }} mo
-        </div>
+        <div class="kpi-label">Avg. Tenure</div>
+        <div class="kpi-value">{{ kpis.avg_tenure }} mo</div>
     </div>
 
-
-    <!-- 10 -->
     <div class="kpi-card kpi-danger">
-        <div class="kpi-label">
-            At-Risk Revenue
-        </div>
-
-        <div class="kpi-value">
-            ${{ kpis.at_risk_revenue }}
-        </div>
+        <div class="kpi-label">At-Risk Revenue</div>
+        <div class="kpi-value">${{ kpis.at_risk_revenue }}</div>
     </div>
 
 </div>
 
-
-<!-- =========================================================
-     RISK INTELLIGENCE
-     ========================================================= -->
-
 <section class="dashboard-section">
-
-    <div class="section-eyebrow">
-        RISK INTELLIGENCE
-    </div>
-
-    <h2 class="section-title">
-        Customer Risk Distribution
-    </h2>
-
+    <div class="section-eyebrow">RISK INTELLIGENCE</div>
+    <h2 class="section-title">Customer Risk Distribution</h2>
     <p class="section-desc">
         RetainIQ converts churn probability into three operational risk
         segments so retention teams can prioritize customer intervention.
     </p>
-
-
     <div class="risk-distribution">
-
-        <!-- LOW -->
         <div class="risk-dist-row">
-
-            <span class="risk-dist-label">
-                Low Risk ({{ kpis.low_risk_count }})
-            </span>
-
-            <div class="risk-track">
-                <div
-                    class="risk-fill risk-low"
-                    style="width: {{ kpis.low_risk_pct }}%;">
-                </div>
-            </div>
-
-            <span class="risk-dist-pct">
-                {{ kpis.low_risk_pct }}%
-            </span>
-
+            <span class="risk-dist-label">Low Risk ({{ kpis.low_risk_count }})</span>
+            <div class="risk-track"><div class="risk-fill risk-low" style="width: {{ kpis.low_risk_pct }}%;"></div></div>
+            <span class="risk-dist-pct">{{ kpis.low_risk_pct }}%</span>
         </div>
-
-
-        <!-- MEDIUM -->
         <div class="risk-dist-row">
-
-            <span class="risk-dist-label">
-                Medium Risk ({{ kpis.medium_risk_count }})
-            </span>
-
-            <div class="risk-track">
-                <div
-                    class="risk-fill risk-medium"
-                    style="width: {{ kpis.medium_risk_pct }}%;">
-                </div>
-            </div>
-
-            <span class="risk-dist-pct">
-                {{ kpis.medium_risk_pct }}%
-            </span>
-
+            <span class="risk-dist-label">Medium Risk ({{ kpis.medium_risk_count }})</span>
+            <div class="risk-track"><div class="risk-fill risk-medium" style="width: {{ kpis.medium_risk_pct }}%;"></div></div>
+            <span class="risk-dist-pct">{{ kpis.medium_risk_pct }}%</span>
         </div>
-
-
-        <!-- HIGH -->
         <div class="risk-dist-row">
-
-            <span class="risk-dist-label">
-                High Risk ({{ kpis.high_risk_count }})
-            </span>
-
-            <div class="risk-track">
-                <div
-                    class="risk-fill risk-high"
-                    style="width: {{ kpis.high_risk_pct }}%;">
-                </div>
-            </div>
-
-            <span class="risk-dist-pct">
-                {{ kpis.high_risk_pct }}%
-            </span>
-
+            <span class="risk-dist-label">High Risk ({{ kpis.high_risk_count }})</span>
+            <div class="risk-track"><div class="risk-fill risk-high" style="width: {{ kpis.high_risk_pct }}%;"></div></div>
+            <span class="risk-dist-pct">{{ kpis.high_risk_pct }}%</span>
         </div>
-
     </div>
-
 </section>
 
-
-<!-- =========================================================
-     PREDICTION SUMMARY
-     ========================================================= -->
-
 <section class="dashboard-section">
-
-    <div class="section-eyebrow">
-        MODEL OUTPUT
-    </div>
-
-    <h2 class="section-title">
-        Prediction Summary
-    </h2>
-
+    <div class="section-eyebrow">MODEL OUTPUT</div>
+    <h2 class="section-title">Prediction Summary</h2>
     <p class="section-desc">
-        Portfolio-level interpretation of the latest Random Forest churn
+        Portfolio-level interpretation of the latest Logistic Regression churn
         predictions.
     </p>
-
-
     <div class="result-grid">
-
-        <!-- LIKELY TO CHURN -->
         <div class="result-card">
-
-            <h3 class="result-card-title">
-                Likely to Churn
-            </h3>
-
-            <div class="probability-display text-danger">
-                {{ kpis.predicted_churners }}
-            </div>
-
-            <div class="prediction-verdict verdict-churn">
-                {{ kpis.churn_rate }}% of customers
-            </div>
-
-            <p class="section-desc">
-                These customers meet the model's churn prediction threshold
-                and should receive proactive retention attention.
-            </p>
-
+            <h3 class="result-card-title">Likely to Churn</h3>
+            <div class="probability-display text-danger">{{ kpis.predicted_churners }}</div>
+            <div class="prediction-verdict verdict-churn">{{ kpis.churn_rate }}% of customers</div>
         </div>
-
-
-        <!-- LIKELY TO STAY -->
         <div class="result-card">
-
-            <h3 class="result-card-title">
-                Likely to Stay
-            </h3>
-
-            <div class="probability-display text-success">
-                {{ kpis.total_customers - kpis.predicted_churners }}
-            </div>
-
-            <div class="prediction-verdict verdict-stay">
-                {{ 100 - kpis.churn_rate }}% of customers
-            </div>
-
-            <p class="section-desc">
-                These customers currently fall below the churn prediction
-                threshold and can remain under normal monitoring.
-            </p>
-
+            <h3 class="result-card-title">Likely to Stay</h3>
+            <div class="probability-display text-success">{{ kpis.total_customers - kpis.predicted_churners }}</div>
+            <div class="prediction-verdict verdict-stay">{{ 100 - kpis.churn_rate }}% of customers</div>
         </div>
-
     </div>
-
 </section>
 
-
-<!-- =========================================================
-     TOP 10 HIGH-RISK CUSTOMERS
-     ========================================================= -->
-
 <section class="dashboard-section">
-
-    <div class="section-eyebrow">
-        PRIORITY QUEUE
-    </div>
-
-    <h2 class="section-title">
-        Top 10 Highest-Risk Customers
-    </h2>
-
+    <div class="section-eyebrow">PRIORITY QUEUE</div>
+    <h2 class="section-title">Top 10 Highest-Risk Customers</h2>
     <p class="section-desc" style="margin-bottom: 16px;">
-        Customers are ordered by predicted churn probability.
-        Select <strong>View</strong> to inspect the customer's signal
-        breakdown and retention plan.
+        Select <strong>View</strong> to inspect the customer's signal breakdown and retention plan.
     </p>
-
-
     <div class="table-wrap">
-
         <table class="data-table">
-
             <thead>
-
                 <tr>
                     <th>Customer ID</th>
                     <th>Signal</th>
@@ -406,315 +183,85 @@
                     <th>Contract</th>
                     <th>Details</th>
                 </tr>
-
             </thead>
-
-
             <tbody>
-
                 {% for c in top_risk %}
-
                 <tr>
-
-                    <!-- CUSTOMER -->
-                    <td class="mono">
-                        {{ c.id }}
-                    </td>
-
-
-                    <!-- SIGNAL -->
+                    <td class="mono">{{ c.id }}</td>
                     <td>
-
                         <div class="signal-meter {{ c.risk_css }}">
-
                             {% for i in range(5) %}
-
-                            <span
-                                class="bar {{ 'lit' if i < c.signal_bars else '' }}">
-                            </span>
-
+                            <span class="bar {{ 'lit' if i < c.signal_bars else '' }}"></span>
                             {% endfor %}
-
                         </div>
-
                     </td>
-
-
-                    <!-- PROBABILITY -->
-                    <td class="mono">
-                        {{ c.probability_pct }}%
-                    </td>
-
-
-                    <!-- RISK -->
-                    <td>
-
-                        <span class="risk-badge risk-badge-sm {{ c.risk_css }}">
-                            {{ c.risk_level }}
-                        </span>
-
-                    </td>
-
-
-                    <!-- MONTHLY CHARGES -->
-                    <td>
-                        ${{ c.monthly_charges }}
-                    </td>
-
-
-                    <!-- TENURE -->
-                    <td>
-                        {{ c.tenure }} mo
-                    </td>
-
-
-                    <!-- CONTRACT -->
-                    <td>
-                        {{ c.contract }}
-                    </td>
-
-
-                    <!-- DETAILS -->
-                    <td>
-
-                        <a
-                            href="#detail-{{ loop.index }}"
-                            class="view-link">
-                            View →
-                        </a>
-
-                    </td>
-
+                    <td class="mono">{{ c.probability_pct }}%</td>
+                    <td><span class="risk-badge risk-badge-sm {{ c.risk_css }}">{{ c.risk_level }}</span></td>
+                    <td>${{ c.monthly_charges }}</td>
+                    <td>{{ c.tenure }} mo</td>
+                    <td>{{ c.contract }}</td>
+                    <td><a href="#detail-{{ loop.index }}" class="view-link">View →</a></td>
                 </tr>
-
                 {% endfor %}
-
             </tbody>
-
         </table>
-
     </div>
-
 </section>
-
-
-<!-- =========================================================
-     RETENTION OPPORTUNITIES
-     ========================================================= -->
 
 <section class="dashboard-section">
-
-    <div class="section-eyebrow">
-        RETENTION INTELLIGENCE
-    </div>
-
-    <h2 class="section-title">
-        Retention Opportunities
-    </h2>
-
+    <div class="section-eyebrow">RETENTION INTELLIGENCE</div>
+    <h2 class="section-title">Retention Opportunities</h2>
     <p class="section-desc">
-
-        Customers classified as Medium or High Risk represent the
-        greatest opportunity for proactive retention.
-
-        Together, they account for
-
-        <strong>
-            {{ kpis.medium_risk_count + kpis.high_risk_count }}
-        </strong>
-
+        If you save the high-risk group, you protect about
+        <strong>${{ '%.2f'|format(kpis.high_risk_revenue) }}</strong> per month.
+        Medium and High Risk together are
+        <strong>{{ kpis.medium_risk_count + kpis.high_risk_count }}</strong>
         customers and approximately
-
-        <strong>
-            ${{ kpis.at_risk_revenue }}
-        </strong>
-
+        <strong>${{ kpis.at_risk_revenue }}</strong>
         in monthly recurring revenue currently at risk.
-
     </p>
-
-
     <div class="result-grid">
-
-        <!-- PRIORITY -->
         <div class="result-card">
-
-            <h3 class="result-card-title">
-                Customers Requiring Attention
-            </h3>
-
-            <div class="probability-display text-danger">
-                {{ kpis.medium_risk_count + kpis.high_risk_count }}
-            </div>
-
-            <p class="section-desc">
-                Medium and High Risk customers should be prioritized
-                for proactive retention intervention.
-            </p>
-
+            <h3 class="result-card-title">Customers Requiring Attention</h3>
+            <div class="probability-display text-danger">{{ kpis.medium_risk_count + kpis.high_risk_count }}</div>
         </div>
-
-
-        <!-- REVENUE -->
         <div class="result-card">
-
-            <h3 class="result-card-title">
-                Monthly Revenue at Risk
-            </h3>
-
-            <div class="probability-display text-danger">
-                ${{ kpis.at_risk_revenue }}
-            </div>
-
-            <p class="section-desc">
-                Estimated monthly recurring revenue associated with
-                Medium and High Risk customers.
-            </p>
-
+            <h3 class="result-card-title">Monthly Revenue at Risk</h3>
+            <div class="probability-display text-danger">${{ kpis.at_risk_revenue }}</div>
         </div>
-
     </div>
-
 </section>
 
-
-<!-- =========================================================
-     CUSTOMER DETAIL MODALS
-     ========================================================= -->
-
 {% for c in top_risk %}
-
-<div
-    class="modal-overlay"
-    id="detail-{{ loop.index }}">
-
+<div class="modal-overlay" id="detail-{{ loop.index }}">
     <div class="modal-box">
-
-        <!-- HEADER -->
-
         <div class="modal-head">
-
             <div>
-
-                <h3 style="margin-bottom: 2px;">
-                    {{ c.id }}
-                </h3>
-
-                <div class="modal-id">
-                    {{ c.contract }}
-                    &middot;
-                    {{ c.internet_service }}
-                    &middot;
-                    {{ c.payment_method }}
-                </div>
-
+                <h3 style="margin-bottom: 2px;">{{ c.id }}</h3>
+                <div class="modal-id">{{ c.contract }} · {{ c.internet_service }} · {{ c.payment_method }}</div>
             </div>
-
-
-            <a
-                href="#"
-                class="modal-close"
-                aria-label="Close">
-                &times;
-            </a>
-
+            <a href="#" class="modal-close" aria-label="Close">&times;</a>
         </div>
-
-
-        <!-- SIGNAL -->
-
-        <div
-            class="signal-meter large {{ c.risk_css }}"
-            style="margin: 8px 0 14px;">
-
+        <div class="signal-meter large {{ c.risk_css }}" style="margin: 8px 0 14px;">
             {% for i in range(5) %}
-
-            <span
-                class="bar {{ 'lit' if i < c.signal_bars else '' }}">
-            </span>
-
+            <span class="bar {{ 'lit' if i < c.signal_bars else '' }}"></span>
             {% endfor %}
-
         </div>
-
-
-        <!-- PROBABILITY -->
-
-        <p
-            class="mono"
-            style="
-                font-size: 1.6rem;
-                font-weight: 700;
-                margin: 0 0 4px;
-            ">
-
-            {{ c.probability_pct }}%
-
-        </p>
-
-
-        <!-- RISK -->
-
-        <div class="risk-badge {{ c.risk_css }}">
-            {{ c.risk_level }}
-        </div>
-
-
-        <!-- RISK DRIVERS -->
-
+        <p class="mono" style="font-size: 1.6rem; font-weight: 700; margin: 0 0 4px;">{{ c.probability_pct }}%</p>
+        <div class="risk-badge {{ c.risk_css }}">{{ c.risk_level }}</div>
         {% if c.top_drivers %}
-
         <div class="drivers-box">
-
-            <h4>
-                Top Risk Drivers
-            </h4>
-
-            <ul>
-
-                {% for driver in c.top_drivers %}
-
-                <li>
-                    {{ driver }}
-                </li>
-
-                {% endfor %}
-
-            </ul>
-
+            <h4>Top Risk Drivers</h4>
+            <ul>{% for driver in c.top_drivers %}<li>{{ driver }}</li>{% endfor %}</ul>
         </div>
-
         {% endif %}
-
-
-        <!-- RETENTION PLAN -->
-
         <div class="drivers-box">
-
-            <h4>
-                Retention Plan
-            </h4>
-
-            <ul>
-
-                {% for rec in c.recommendations %}
-
-                <li>
-                    {{ rec }}
-                </li>
-
-                {% endfor %}
-
-            </ul>
-
+            <h4>Retention Plan</h4>
+            <ul>{% for rec in c.recommendations %}<li>{{ rec }}</li>{% endfor %}</ul>
         </div>
-
     </div>
-
 </div>
-
 {% endfor %}
-
 
 {% endif %}
 

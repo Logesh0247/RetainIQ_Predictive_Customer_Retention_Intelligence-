@@ -2,7 +2,7 @@
 RetainIQ preprocessing adapter.
 
 The UI uses the canonical Telco dataset field names (camelCase/raw Kaggle names),
-while the deployed Random Forest model in the integrated project was trained on
+while the deployed Logistic Regression model in the integrated project was trained on
 the legacy display-name feature schema. This module converts either schema into
 the exact 30 features expected by models/feature_columns.pkl.
 """
@@ -102,13 +102,19 @@ def build_feature_frame(df):
     data["Monthly Charges"] = pd.to_numeric(df["MonthlyCharges"], errors="coerce").fillna(0).astype(float)
     data["Total Charges"] = pd.to_numeric(df["TotalCharges"], errors="coerce").fillna(0).astype(float)
 
-    def yes(col, feature):
+    def flag(mask, feature):
         if feature in data.columns:
-            data.loc[df[col].eq("Yes"), feature] = 1
-    yes("gender", "Gender_Male")
-    yes("SeniorCitizen", "Senior Citizen_Yes")
-    for c in ["Partner","Dependents","PhoneService"]:
-        yes(c, f"{c}_Yes")
+            data.loc[mask, feature] = 1
+
+    gender = df["gender"].astype(str).str.strip()
+    flag(gender.str.lower().eq("male"), "Gender_Male")
+
+    senior = pd.to_numeric(df["SeniorCitizen"], errors="coerce").fillna(0)
+    flag(senior.eq(1) | df["SeniorCitizen"].astype(str).str.strip().isin(("1", "Yes", "yes")), "Senior Citizen_Yes")
+
+    flag(df["Partner"].eq("Yes"), "Partner_Yes")
+    flag(df["Dependents"].eq("Yes"), "Dependents_Yes")
+    flag(df["PhoneService"].eq("Yes"), "Phone Service_Yes")
 
     mappings = [
         ("MultipleLines","No phone service","Multiple Lines_No phone service"),

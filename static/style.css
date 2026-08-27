@@ -316,6 +316,58 @@ body:has(#ops-mode:checked) .ops-toggle::after { transform: translateX(18px); ba
 .upload-label { display: block; font-weight: 700; margin-bottom: 12px; font-family: var(--font-display); }
 .upload-hint { color: var(--muted); font-size: 0.8rem; margin-top: 14px; max-width: 640px; margin-left: auto; margin-right: auto; }
 
+.upload-layout { display: block; max-width: 720px; }
+.upload-card { padding: 22px 22px 20px; }
+.drop-zone {
+    position: relative;
+    display: flex; flex-direction: column; align-items: center; justify-content: center;
+    gap: 8px; text-align: center; cursor: pointer;
+    border: 1.5px dashed var(--line); border-radius: 12px;
+    padding: 36px 20px; background: var(--ink);
+    transition: border-color 0.2s ease, background 0.2s ease;
+}
+.drop-zone input[type="file"] {
+    position: absolute; width: 1px; height: 1px; opacity: 0; overflow: hidden;
+}
+.drop-zone:hover, .drop-zone.is-over { border-color: var(--action); background: var(--action-dim); }
+.drop-zone.has-file { border-style: solid; border-color: color-mix(in srgb, var(--ok) 55%, var(--line)); }
+.drop-icon {
+    width: 44px; height: 44px; border-radius: 12px; margin-bottom: 4px;
+    background: var(--action-dim); position: relative;
+}
+.drop-icon::before, .drop-icon::after {
+    content: ""; position: absolute; left: 50%; top: 50%; background: var(--action);
+}
+.drop-icon::before { width: 3px; height: 18px; transform: translate(-50%, -60%); border-radius: 2px; }
+.drop-icon::after { width: 10px; height: 10px; border-left: 3px solid var(--action); border-bottom: 3px solid var(--action); transform: translate(-50%, -35%) rotate(-45deg); background: transparent; }
+.drop-title { font-family: var(--font-display); font-size: 1.05rem; }
+.drop-sub { color: var(--muted); font-size: 0.82rem; }
+.file-pill {
+    margin-top: 10px; font-family: var(--font-mono); font-size: 0.75rem;
+    color: var(--muted); background: var(--panel); border: 1px solid var(--line);
+    border-radius: 999px; padding: 6px 12px; max-width: 100%;
+}
+.drop-zone.has-file .file-pill { color: var(--ok); border-color: color-mix(in srgb, var(--ok) 40%, var(--line)); }
+.col-guide { margin: 16px 0 4px; }
+.col-guide summary {
+    cursor: pointer; color: var(--muted); font-size: 0.8rem; font-weight: 600;
+    list-style: none;
+}
+.col-guide summary::-webkit-details-marker { display: none; }
+.col-guide summary::before { content: "+ "; color: var(--action); }
+.col-guide[open] summary::before { content: "− "; }
+.col-chips { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 10px; }
+.col-chips span {
+    font-family: var(--font-mono); font-size: 0.7rem; color: var(--text);
+    background: var(--ink); border: 1px solid var(--line); border-radius: 999px;
+    padding: 4px 8px;
+}
+.col-chips em { color: var(--muted); font-style: normal; font-size: 0.65rem; }
+.demo-panel { margin: 16px 0 0; max-width: 720px; display: block; }
+@media (max-width: 860px) {
+    .upload-layout { grid-template-columns: 1fr; }
+}
+
 .form-actions { margin-top: 24px; display: flex; gap: 12px; }
 .form-actions-multi { flex-wrap: wrap; }
 
@@ -453,6 +505,27 @@ body:has(#ops-mode:checked) .ops-toggle::after { transform: translateX(18px); ba
 #tab-charges:checked ~ .tab-panels .panel-charges,
 #tab-tenure:checked ~ .tab-panels .panel-tenure { display: block; }
 
+.filter-controls { border-bottom: none; margin-bottom: 12px; }
+#filt-all:checked ~ .filter-controls label[for="filt-all"],
+#filt-high:checked ~ .filter-controls label[for="filt-high"],
+#filt-mtm:checked ~ .filter-controls label[for="filt-mtm"],
+#filt-bill:checked ~ .filter-controls label[for="filt-bill"] { color: var(--action); border-bottom-color: var(--action); }
+
+#filt-high:checked ~ .tab-panels tbody tr:not(.is-high) { display: none; }
+#filt-mtm:checked ~ .tab-panels tbody tr:not(.is-mtm) { display: none; }
+#filt-bill:checked ~ .tab-panels tbody tr:not(.is-high-bill) { display: none; }
+
+.primary-action {
+    font-size: 1.05rem;
+    font-weight: 700;
+    line-height: 1.45;
+    margin: 0;
+    padding: 14px 16px;
+    border-radius: var(--radius-sm);
+    background: var(--action-dim);
+    border: 1px solid color-mix(in srgb, var(--action) 35%, transparent);
+}
+
 /* ---------------------------------------------------------------------
    :target modal (pure CSS) -- customer detail popups
    --------------------------------------------------------------------- */
@@ -535,4 +608,6 @@ body:has(#ops-mode:checked) .ops-toggle::after { transform: translateX(18px); ba
     .hero-actions { flex-direction: column; }
     .hero-actions .btn { text-align: center; justify-content: center; }
     .wizard-rail label .step-num { display: none; }
+}
+none; }
 }

@@ -21,26 +21,91 @@
     </div>
 </div>
 
-<form class="form-card" style="padding: 28px;" method="POST" action="{{ url_for('bulk_prediction') }}" enctype="multipart/form-data">
-    <h3 class="form-section-title">Upload CSV</h3>
-    <div class="upload-box">
-        <label for="customer_csv" class="upload-label">Choose a .csv file</label>
-        <input type="file" id="customer_csv" name="customer_csv" accept=".csv" required>
-        <p class="upload-hint">
-            Required columns: customerID (optional, auto-generated), gender, SeniorCitizen, Partner,
-            Dependents, tenure, PhoneService, MultipleLines, InternetService, OnlineSecurity, OnlineBackup,
-            DeviceProtection, TechSupport, StreamingTV, StreamingMovies, Contract, PaperlessBilling,
-            PaymentMethod, MonthlyCharges, TotalCharges.
-        </p>
-    </div>
-    <div class="form-actions">
-        <button type="submit" class="btn btn-primary" {{ 'disabled' if not model_ready }}>Upload &amp; Predict</button>
-    </div>
-</form>
+<div class="upload-layout">
+    <form class="form-card upload-card" id="bulk-upload-form" method="POST" action="{{ url_for('bulk_prediction') }}" enctype="multipart/form-data">
+        <h3 class="form-section-title">Upload CSV</h3>
 
-<div class="info-panel">
-    <h3>Sample Format</h3>
-    <p>Not sure of the format? A sample dataset matching this schema (<code>sample_customers.csv</code>) ships in the project root — upload it to test the flow end to end.</p>
+        <label class="drop-zone" id="drop-zone" for="customer_csv">
+            <input type="file" id="customer_csv" name="customer_csv" accept=".csv,text/csv" required>
+            <span class="drop-icon" aria-hidden="true"></span>
+            <strong class="drop-title">Drop your customer CSV here</strong>
+            <span class="drop-sub">or click to browse · .csv only · max 10 MB</span>
+            <span class="file-pill" id="drop-name">No file selected</span>
+        </label>
+
+        <details class="col-guide">
+            <summary>Required columns</summary>
+            <div class="col-chips">
+                <span>customerID <em>optional</em></span>
+                <span>gender</span>
+                <span>SeniorCitizen</span>
+                <span>Partner</span>
+                <span>Dependents</span>
+                <span>tenure</span>
+                <span>PhoneService</span>
+                <span>MultipleLines</span>
+                <span>InternetService</span>
+                <span>OnlineSecurity</span>
+                <span>OnlineBackup</span>
+                <span>DeviceProtection</span>
+                <span>TechSupport</span>
+                <span>StreamingTV</span>
+                <span>StreamingMovies</span>
+                <span>Contract</span>
+                <span>PaperlessBilling</span>
+                <span>PaymentMethod</span>
+                <span>MonthlyCharges</span>
+                <span>TotalCharges</span>
+            </div>
+        </details>
+
+        <div class="form-actions">
+            <button type="submit" class="btn btn-primary" id="bulk-submit" {{ 'disabled' if not model_ready }}>Upload &amp; Predict</button>
+        </div>
+    </form>
 </div>
+
+<aside class="info-panel demo-panel">
+    <h3>No file handy?</h3>
+    <p>Run the bundled sample list to see KPIs, risk bands, and the results table immediately.</p>
+    <form method="POST" action="{{ url_for('bulk_prediction_sample') }}">
+        <button type="submit" class="btn btn-secondary" {{ 'disabled' if not model_ready }}>Score sample customers</button>
+    </form>
+</aside>
+
+<script>
+(function () {
+  var input = document.getElementById("customer_csv");
+  var nameEl = document.getElementById("drop-name");
+  var zone = document.getElementById("drop-zone");
+  if (!input || !nameEl || !zone) return;
+  function showName(file) {
+    nameEl.textContent = file ? file.name : "No file selected";
+    zone.classList.toggle("has-file", !!file);
+  }
+  input.addEventListener("change", function () { showName(input.files[0]); });
+  ["dragenter", "dragover"].forEach(function (ev) {
+    zone.addEventListener(ev, function (e) { e.preventDefault(); zone.classList.add("is-over"); });
+  });
+  ["dragleave", "drop"].forEach(function (ev) {
+    zone.addEventListener(ev, function (e) { e.preventDefault(); zone.classList.remove("is-over"); });
+  });
+  zone.addEventListener("drop", function (e) {
+    if (e.dataTransfer.files && e.dataTransfer.files[0]) {
+      input.files = e.dataTransfer.files;
+      showName(e.dataTransfer.files[0]);
+    }
+  });
+  var form = document.getElementById("bulk-upload-form");
+  var submitBtn = document.getElementById("bulk-submit");
+  if (form && submitBtn) {
+    form.addEventListener("submit", function () {
+      if (!input.files || !input.files[0]) return;
+      submitBtn.disabled = true;
+      submitBtn.textContent = "Scoring customers…";
+    });
+  }
+})();
+</script>
 
 {% endblock %}

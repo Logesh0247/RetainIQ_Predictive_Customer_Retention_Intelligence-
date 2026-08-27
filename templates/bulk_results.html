@@ -34,9 +34,16 @@
     </div>
 </div>
 
+<p class="section-desc" style="margin-bottom: 18px;">
+    If you retain the high-risk group, you protect about
+    <strong>${{ '%.2f'|format(kpis.high_risk_revenue) }}</strong> in monthly revenue.
+    Medium + high risk together is about
+    <strong>${{ '%.2f'|format(kpis.at_risk_revenue) }}</strong> / month.
+</p>
+
 <div class="table-actions">
-    <a href="{{ url_for('download_results', filename=download_filename) }}" class="btn btn-primary">Download Full Results (CSV)</a>
-    <a href="{{ url_for('prediction_dashboard') }}" class="btn btn-secondary">View Full Dashboard</a>
+    <a href="{{ url_for('download_results', filename=download_filename) }}" class="btn btn-primary">Download CSV</a>
+    <a href="{{ url_for('prediction_dashboard', run=run_id) if run_id else url_for('prediction_dashboard') }}" class="btn btn-secondary">View Full Dashboard</a>
     {% if total_rows > max_display_rows %}
     <span class="table-note">Showing the first {{ max_display_rows }} of {{ total_rows }} customers per view — the CSV download has all {{ total_rows }}.</span>
     {% endif %}
@@ -47,11 +54,21 @@
     <input type="radio" name="sort_tab" id="tab-prob" class="control-input" checked>
     <input type="radio" name="sort_tab" id="tab-charges" class="control-input">
     <input type="radio" name="sort_tab" id="tab-tenure" class="control-input">
+    <input type="radio" name="row_filter" id="filt-all" class="control-input" checked>
+    <input type="radio" name="row_filter" id="filt-high" class="control-input">
+    <input type="radio" name="row_filter" id="filt-mtm" class="control-input">
+    <input type="radio" name="row_filter" id="filt-bill" class="control-input">
 
     <nav class="tab-controls">
         <label for="tab-prob">Sort: Highest Risk</label>
         <label for="tab-charges">Sort: Highest Billing</label>
         <label for="tab-tenure">Sort: Newest Customers</label>
+    </nav>
+    <nav class="tab-controls filter-controls">
+        <label for="filt-all">All</label>
+        <label for="filt-high">High risk only</label>
+        <label for="filt-mtm">Month-to-month</label>
+        <label for="filt-bill">Bill ≥ $80</label>
     </nav>
 
     <div class="tab-panels">
@@ -70,7 +87,7 @@
                 </thead>
                 <tbody>
                     {% for row in records %}
-                    <tr>
+                    <tr class="{{ row.row_classes }}">
                         <td class="mono">{{ row.id }}</td>
                         <td>
                             <div class="signal-meter {{ row.risk_css }}">
