@@ -1,6 +1,6 @@
 ## RetainIQ Predictive Customer Retention Intelligence
 
-## website link : https://retainiq-predictive-customer-retention-zq6x.onrender.com
+## Link : https://retainiq-predictive-customer-retention-zq6x.onrender.com
 
 ## Overview
 
