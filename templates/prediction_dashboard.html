@@ -159,7 +159,7 @@
         <div class="result-card">
             <h3 class="result-card-title">Likely to Stay</h3>
             <div class="probability-display text-success">{{ kpis.total_customers - kpis.predicted_churners }}</div>
-            <div class="prediction-verdict verdict-stay">{{ 100 - kpis.churn_rate }}% of customers</div>
+            <div class="prediction-verdict verdict-stay">{{ (100 - kpis.churn_rate)|round(1) }}% of customers</div>
         </div>
     </div>
 </section>
