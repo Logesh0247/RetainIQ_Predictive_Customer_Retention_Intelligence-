@@ -501,24 +501,29 @@ def _render_bulk_results(bundle):
 
 @app.route("/bulk-results")
 def bulk_results_view():
-    bundle, download_filename, run_id = _load_run_bundle()
-    if bundle is None:
-        flash("Run a bulk prediction first — choose a CSV or use the sample file.", "error")
-        return redirect(url_for("bulk_prediction"))
+    try:
+        bundle, download_filename, run_id = _load_run_bundle()
+        if bundle is None:
+            flash("Run a bulk prediction first — choose a CSV or use the sample file.", "error")
+            return redirect(url_for("bulk_prediction"))
 
-    kpis = compute_dashboard_kpis(bundle["results_df"])
-    total_rows = len(bundle["results_df"])
-    return render_template(
-        "bulk_results.html",
-        kpis=kpis,
-        download_filename=download_filename,
-        records_by_prob=build_display_records(bundle, sort_by="probability")[:MAX_DISPLAY_ROWS],
-        records_by_charges=build_display_records(bundle, sort_by="charges")[:MAX_DISPLAY_ROWS],
-        records_by_tenure=build_display_records(bundle, sort_by="tenure")[:MAX_DISPLAY_ROWS],
-        max_display_rows=MAX_DISPLAY_ROWS,
-        total_rows=total_rows,
-        run_id=run_id,
-    )
+        kpis = compute_dashboard_kpis(bundle["results_df"])
+        total_rows = len(bundle["results_df"])
+        return render_template(
+            "bulk_results.html",
+            kpis=kpis,
+            download_filename=download_filename,
+            records_by_prob=build_display_records(bundle, sort_by="probability")[:MAX_DISPLAY_ROWS],
+            records_by_charges=build_display_records(bundle, sort_by="charges")[:MAX_DISPLAY_ROWS],
+            records_by_tenure=build_display_records(bundle, sort_by="tenure")[:MAX_DISPLAY_ROWS],
+            max_display_rows=MAX_DISPLAY_ROWS,
+            total_rows=total_rows,
+            run_id=run_id,
+        )
+    except Exception as exc:
+        logger.exception("Error displaying bulk results")
+        flash(f"Could not render prediction results: {exc}", "error")
+        return redirect(url_for("bulk_prediction"))
 
 
 @app.route("/bulk-prediction", methods=["GET", "POST"])
@@ -528,22 +533,30 @@ def bulk_prediction():
         return render_template("bulk_prediction.html", model_ready=is_model_available())
 
     try:
-        bundle = run_bulk_prediction(request.files.get("customer_csv"))
+        file_obj = request.files.get("customer_csv")
+        bundle = run_bulk_prediction(file_obj)
+        return _render_bulk_results(bundle)
     except BulkPredictionError as exc:
         flash(str(exc), "error")
         return render_template("bulk_prediction.html", model_ready=is_model_available())
-
-    return _render_bulk_results(bundle)
+    except Exception as exc:
+        logger.exception("Unexpected error during bulk prediction")
+        flash(f"An unexpected error occurred during prediction: {exc}", "error")
+        return render_template("bulk_prediction.html", model_ready=is_model_available())
 
 
 @app.route("/bulk-prediction/sample", methods=["POST"])
 def bulk_prediction_sample():
     try:
         bundle = run_sample_prediction()
+        return _render_bulk_results(bundle)
     except BulkPredictionError as exc:
         flash(str(exc), "error")
         return render_template("bulk_prediction.html", model_ready=is_model_available())
-    return _render_bulk_results(bundle)
+    except Exception as exc:
+        logger.exception("Unexpected error during sample bulk prediction")
+        flash(f"An error occurred while scoring sample customers: {exc}", "error")
+        return render_template("bulk_prediction.html", model_ready=is_model_available())
 
 
 # ---------------------------------------------------------------------------
@@ -579,29 +592,34 @@ def download_results(filename):
 
 @app.route("/dashboard")
 def prediction_dashboard():
-    bundle, download_filename, run_id = _load_run_bundle()
+    try:
+        bundle, download_filename, run_id = _load_run_bundle()
 
-    if bundle is None:
+        if bundle is None:
+            return render_template(
+                "prediction_dashboard.html",
+                kpis=None,
+                generated_at=None,
+            )
+
+        kpis = compute_dashboard_kpis(bundle["results_df"])
+        top_risk = build_top_risk_records(bundle)
+        generated_at = session.get("latest_results_generated_at")
+        if not generated_at and run_id:
+            generated_at = run_id.replace("_", " ")
+
         return render_template(
             "prediction_dashboard.html",
-            kpis=None,
-            generated_at=None,
+            kpis=kpis,
+            top_risk=top_risk,
+            generated_at=generated_at,
+            download_filename=download_filename,
+            run_id=run_id,
         )
-
-    kpis = compute_dashboard_kpis(bundle["results_df"])
-    top_risk = build_top_risk_records(bundle)
-    generated_at = session.get("latest_results_generated_at")
-    if not generated_at and run_id:
-        generated_at = run_id.replace("_", " ")
-
-    return render_template(
-        "prediction_dashboard.html",
-        kpis=kpis,
-        top_risk=top_risk,
-        generated_at=generated_at,
-        download_filename=download_filename,
-        run_id=run_id,
-    )
+    except Exception as exc:
+        logger.exception("Error loading prediction dashboard")
+        flash(f"Could not load prediction dashboard: {exc}", "error")
+        return redirect(url_for("bulk_prediction"))
 
 
 # ---------------------------------------------------------------------------
@@ -613,42 +631,39 @@ def prediction_dashboard():
 
 @app.route("/dashboard/review/<path:filename>")
 def review_dashboard(filename):
+    try:
+        filename = os.path.basename(filename)
+        run_id = _run_id_from_filename(filename)
+        bundle, filename, run_id = _bundle_from_run(run_id)
 
-    filename = os.path.basename(filename)
-    run_id = _run_id_from_filename(filename)
-    bundle, filename, run_id = _bundle_from_run(run_id)
+        if bundle is None:
+            flash("The dashboard data for this report is no longer available.", "error")
+            return redirect(url_for("reports"))
 
-    if bundle is None:
+        kpis = compute_dashboard_kpis(bundle["results_df"])
+        top_risk = build_top_risk_records(bundle)
 
-        flash("The dashboard data for this report is no longer available.","error")
+        folder = _run_folder(run_id)
+        report_path = os.path.join(folder, filename) if folder else None
 
+        generated_at = None
+        if report_path and os.path.exists(report_path):
+            generated_at = datetime.fromtimestamp(
+                os.path.getmtime(report_path)
+            ).strftime("%d %b %Y, %I:%M %p")
+
+        return render_template(
+            "prediction_dashboard.html",
+            kpis=kpis,
+            top_risk=top_risk,
+            generated_at=generated_at,
+            download_filename=filename,
+            historical_dashboard=True,
+        )
+    except Exception as exc:
+        logger.exception("Error loading historical review dashboard")
+        flash(f"Could not load review dashboard: {exc}", "error")
         return redirect(url_for("reports"))
-
-    kpis = compute_dashboard_kpis(bundle["results_df"])
-
-    top_risk = build_top_risk_records(bundle)
-
-    # Use the CSV file's actual modification time
-    # so the dashboard identifies the historical run correctly.
-    folder = _run_folder(run_id)
-    report_path = os.path.join(folder, filename) if folder else None
-
-    generated_at = None
-
-    if report_path and os.path.exists(report_path):
-
-        generated_at = datetime.fromtimestamp(
-            os.path.getmtime(report_path)
-        ).strftime("%d %b %Y, %I:%M %p")
-
-    return render_template(
-        "prediction_dashboard.html",
-        kpis=kpis,
-        top_risk=top_risk,
-        generated_at=generated_at,
-        download_filename=filename,
-        historical_dashboard=True,
-    )
 
 
 # ---------------------------------------------------------------------------

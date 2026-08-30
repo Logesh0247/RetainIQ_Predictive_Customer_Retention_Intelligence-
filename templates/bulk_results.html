@@ -101,8 +101,8 @@
                         <td><span class="risk-badge risk-badge-sm {{ row.risk_css }}">{{ row.risk_level }}</span></td>
                         <td class="rec-cell">
                             <details class="row-detail">
-                                <summary>{{ row.recommendations[0] }}</summary>
-                                {% if row.recommendations|length > 1 %}
+                                <summary>{{ row.recommendations[0] if row.recommendations else 'Monitor account.' }}</summary>
+                                {% if row.recommendations and row.recommendations|length > 1 %}
                                 <ul>
                                     {% for rec in row.recommendations[1:] %}
                                     <li>{{ rec }}</li>

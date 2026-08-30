@@ -73,14 +73,16 @@ def _score_dataframe(df):
 
     cleaned = cleaned.reset_index(drop=True)
     X = X.reset_index(drop=True)
+    cleaned_records = cleaned.to_dict("records")
+
     risk_levels = [calculate_risk_level(p) for p in probs]
     actions = [
-        retention_action_label(cleaned.iloc[i], probs[i], risk_levels[i])
-        for i in range(len(cleaned))
+        retention_action_label(cleaned_records[i], probs[i], risk_levels[i])
+        for i in range(len(cleaned_records))
     ]
     summaries = [
-        generate_recommendation_summary(cleaned.iloc[i], probs[i], risk_levels[i])
-        for i in range(len(cleaned))
+        generate_recommendation_summary(cleaned_records[i], probs[i], risk_levels[i])
+        for i in range(len(cleaned_records))
     ]
     at_risk = [level in ("High Risk", "Medium Risk") for level in risk_levels]
 
@@ -116,16 +118,23 @@ def run_bulk_prediction_from_bytes(raw, filename="upload.csv"):
         raise BulkPredictionError("The uploaded file is empty.")
     if filename and not allowed_file(filename):
         raise BulkPredictionError("Invalid file type. Only .csv files are supported.")
-    try:
-        df = pd.read_csv(io.BytesIO(raw))
-    except pd.errors.EmptyDataError as exc:
-        raise BulkPredictionError("The uploaded CSV file has no data.") from exc
-    except pd.errors.ParserError as exc:
-        raise BulkPredictionError("The uploaded file could not be parsed as a valid CSV.") from exc
-    except BulkPredictionError:
-        raise
-    except Exception as exc:
-        raise BulkPredictionError(f"Could not read the uploaded file: {exc}") from exc
+    
+    df = None
+    last_err = None
+    for encoding in ["utf-8-sig", "utf-8", "latin1", "cp1252", "iso-8859-1"]:
+        try:
+            df = pd.read_csv(io.BytesIO(raw), encoding=encoding)
+            break
+        except pd.errors.EmptyDataError as exc:
+            raise BulkPredictionError("The uploaded CSV file has no data.") from exc
+        except Exception as exc:
+            last_err = exc
+            continue
+
+    if df is None:
+        raise BulkPredictionError(
+            f"The uploaded file could not be parsed as a valid CSV: {last_err or 'unknown encoding error'}"
+        )
     return _score_dataframe(df)
 
 
@@ -142,7 +151,7 @@ def run_sample_prediction():
 
 
 def run_bulk_prediction(file_storage):
-    if file_storage is None or file_storage.filename == "":
+    if file_storage is None or getattr(file_storage, "filename", "") == "":
         raise BulkPredictionError("No file was selected. Please choose a CSV file to upload.")
     if not allowed_file(file_storage.filename):
         raise BulkPredictionError("Invalid file type. Only .csv files are supported.")
@@ -154,28 +163,38 @@ def run_bulk_prediction(file_storage):
 
 
 def _record_from_row(row, cleaned_row, prob, extra=None):
-    risk = row["Risk Level"]
+    risk = row["Risk Level"] if hasattr(row, "get") else row.get("Risk Level", "Low Risk") if isinstance(row, dict) else row["Risk Level"]
+    m_charges = row["Monthly Charges"] if hasattr(row, "get") else row.get("Monthly Charges", 0) if isinstance(row, dict) else row["Monthly Charges"]
+    c_id = row["Customer ID"] if hasattr(row, "get") else row.get("Customer ID", "") if isinstance(row, dict) else row["Customer ID"]
+    pred = row["Prediction"] if hasattr(row, "get") else row.get("Prediction", "Likely to Stay") if isinstance(row, dict) else row["Prediction"]
+    prob_pct = row["Churn Probability"] if hasattr(row, "get") else row.get("Churn Probability", 0) if isinstance(row, dict) else row["Churn Probability"]
+    tenure_val = row["Tenure"] if hasattr(row, "get") else row.get("Tenure", 0) if isinstance(row, dict) else row["Tenure"]
+    contract_val = row["Contract"] if hasattr(row, "get") else row.get("Contract", "Month-to-month") if isinstance(row, dict) else row["Contract"]
+
     recs = generate_recommendation(cleaned_row, prob, risk)
+    if not recs:
+        recs = ["Monitor account."]
+
     record = {
-        "id": row["Customer ID"],
-        "probability_pct": row["Churn Probability"],
-        "prediction": row["Prediction"],
-        "will_churn": row["Prediction"] == "Likely to Churn",
-        "risk_level": risk,
-        "risk_css": risk_css_class(risk),
-        "signal_bars": signal_strength(prob),
-        "monthly_charges": row["Monthly Charges"],
-        "tenure": row["Tenure"],
-        "contract": row["Contract"],
+        "id": str(c_id),
+        "probability_pct": float(prob_pct),
+        "prediction": str(pred),
+        "will_churn": str(pred) == "Likely to Churn",
+        "risk_level": str(risk),
+        "risk_css": risk_css_class(str(risk)),
+        "signal_bars": signal_strength(float(prob)),
+        "monthly_charges": float(m_charges),
+        "tenure": int(tenure_val),
+        "contract": str(contract_val),
         "recommendations": recs,
-        "primary_action": recs[0] if recs else "Monitor account.",
-        "is_high": risk == "High Risk",
-        "is_mtm": str(row["Contract"]) == "Month-to-month",
-        "is_high_bill": float(row["Monthly Charges"]) >= 80,
+        "primary_action": recs[0],
+        "is_high": str(risk) == "High Risk",
+        "is_mtm": str(contract_val) == "Month-to-month",
+        "is_high_bill": float(m_charges) >= 80,
         "row_classes": " ".join(filter(None, [
-            "is-high" if risk == "High Risk" else "",
-            "is-mtm" if str(row["Contract"]) == "Month-to-month" else "",
-            "is-high-bill" if float(row["Monthly Charges"]) >= 80 else "",
+            "is-high" if str(risk) == "High Risk" else "",
+            "is-mtm" if str(contract_val) == "Month-to-month" else "",
+            "is-high-bill" if float(m_charges) >= 80 else "",
         ])),
     }
     if extra:
@@ -183,17 +202,23 @@ def _record_from_row(row, cleaned_row, prob, extra=None):
     return record
 
 
-def build_display_records(bundle, sort_by="probability"):
+def build_display_records(bundle, sort_by="probability", max_rows=MAX_DISPLAY_ROWS):
     results, cleaned, probs = bundle["results_df"], bundle["cleaned_df"], bundle["probabilities"]
+    n_rows = len(results)
+    
+    if sort_by == "charges":
+        order = np.argsort(-results["Monthly Charges"].values)
+    elif sort_by == "tenure":
+        order = np.argsort(results["Tenure"].values)
+    else:  # probability
+        order = np.argsort(-probs)
+
+    top_indices = order[:max_rows]
     records = []
-    for i in range(len(results)):
-        records.append(_record_from_row(results.iloc[i], cleaned.iloc[i], float(probs[i])))
-    key = {
-        "probability": lambda x: -x["probability_pct"],
-        "charges": lambda x: -x["monthly_charges"],
-        "tenure": lambda x: x["tenure"],
-    }.get(sort_by, lambda x: -x["probability_pct"])
-    return sorted(records, key=key)
+    for idx in top_indices:
+        idx = int(idx)
+        records.append(_record_from_row(results.iloc[idx], cleaned.iloc[idx], float(probs[idx])))
+    return records
 
 
 def build_top_risk_records(bundle, top_n=TOP_N_WITH_DRIVERS):
@@ -204,9 +229,13 @@ def build_top_risk_records(bundle, top_n=TOP_N_WITH_DRIVERS):
         bundle["probabilities"],
     )
     records = []
-    for idx in np.argsort(-probs)[:top_n]:
+    top_indices = np.argsort(-probs)[:top_n]
+    for idx in top_indices:
         idx = int(idx)
-        recs = generate_recommendation(cleaned.iloc[idx], float(probs[idx]), results.iloc[idx]["Risk Level"])
+        risk = str(results.iloc[idx]["Risk Level"])
+        recs = generate_recommendation(cleaned.iloc[idx], float(probs[idx]), risk)
+        if not recs:
+            recs = ["Monitor account."]
         records.append(_record_from_row(
             results.iloc[idx],
             cleaned.iloc[idx],
@@ -216,7 +245,7 @@ def build_top_risk_records(bundle, top_n=TOP_N_WITH_DRIVERS):
                 "payment_method": cleaned.iloc[idx].get("PaymentMethod"),
                 "top_drivers": get_top_drivers(features.iloc[[idx]]),
                 "recommendations": recs,
-                "primary_action": recs[0] if recs else "Monitor account.",
+                "primary_action": recs[0],
             },
         ))
     return records
