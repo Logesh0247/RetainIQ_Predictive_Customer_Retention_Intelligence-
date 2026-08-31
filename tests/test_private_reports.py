@@ -124,3 +124,10 @@ class PrivateReportsTests(unittest.TestCase):
         self.assertEqual(results.status_code, 200)
         self.assertIn(b"Bulk Prediction Results", results.data)
         self.assertNotIn(b"Run a bulk prediction first", results.data)
+
+        run_id = location.split("run=", 1)[1]
+        self.assertIn(f'/dashboard?run={run_id}'.encode(), results.data)
+        dashboard = stranger.get(f"/dashboard?run={run_id}")
+        self.assertEqual(dashboard.status_code, 200)
+        self.assertNotIn(b"No Signal Yet", dashboard.data)
+        self.assertIn(b"Total Customers", dashboard.data)

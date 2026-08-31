@@ -28,13 +28,14 @@
             </div>
         </div>
 
+        {% set active_run = request.args.get('run', '') %}
         <nav class="sidebar-nav">
-            <a href="{{ url_for('home') }}" class="{{ 'active' if request.endpoint == 'home' }}"><span class="nav-dot"></span>Home</a>
-            <a href="{{ url_for('single_prediction') }}" class="{{ 'active' if request.endpoint == 'single_prediction' }}"><span class="nav-dot"></span>Single Prediction</a>
-            <a href="{{ url_for('bulk_prediction') }}" class="{{ 'active' if request.endpoint in ('bulk_prediction', 'bulk_results_view') }}"><span class="nav-dot"></span>Bulk Prediction</a>
-            <a href="{{ url_for('prediction_dashboard') }}" class="{{ 'active' if request.endpoint == 'prediction_dashboard' }}"><span class="nav-dot"></span>Prediction Dashboard</a>
-            <a href="{{ url_for('reports') }}" class="{{ 'active' if request.endpoint == 'reports' }}"><span class="nav-dot"></span>Reports</a>
-            <a href="{{ url_for('about') }}" class="{{ 'active' if request.endpoint == 'about' }}"><span class="nav-dot"></span>About</a>
+            <a href="{{ url_for('home', run=active_run) if active_run else url_for('home') }}" class="{{ 'active' if request.endpoint == 'home' }}"><span class="nav-dot"></span>Home</a>
+            <a href="{{ url_for('single_prediction', run=active_run) if active_run else url_for('single_prediction') }}" class="{{ 'active' if request.endpoint == 'single_prediction' }}"><span class="nav-dot"></span>Single Prediction</a>
+            <a href="{{ url_for('bulk_prediction', run=active_run) if active_run else url_for('bulk_prediction') }}" class="{{ 'active' if request.endpoint in ('bulk_prediction', 'bulk_results_view') }}"><span class="nav-dot"></span>Bulk Prediction</a>
+            <a href="{{ url_for('prediction_dashboard', run=active_run) if active_run else url_for('prediction_dashboard') }}" class="{{ 'active' if request.endpoint == 'prediction_dashboard' }}"><span class="nav-dot"></span>Prediction Dashboard</a>
+            <a href="{{ url_for('reports', run=active_run) if active_run else url_for('reports') }}" class="{{ 'active' if request.endpoint == 'reports' }}"><span class="nav-dot"></span>Reports</a>
+            <a href="{{ url_for('about', run=active_run) if active_run else url_for('about') }}" class="{{ 'active' if request.endpoint == 'about' }}"><span class="nav-dot"></span>About</a>
         </nav>
 
         <div class="sidebar-foot">
@@ -75,6 +76,33 @@
     toggle.addEventListener('change', () => {
         try { localStorage.setItem('retainiq-ops-mode', toggle.checked ? 'day' : 'night'); } catch (_) {}
     });
+})();
+
+// Keep the active bulk-scoring run attached to navigation URLs. This also
+// preserves results in preview browsers that restrict third-party cookies.
+(() => {
+    const params = new URLSearchParams(window.location.search);
+    const runPattern = /^\d{8}_\d{6}_[0-9a-f]{16}$/;
+    let runId = params.get('run') || '';
+    try {
+        if (runPattern.test(runId)) localStorage.setItem('retainiq-active-run', runId);
+        else runId = localStorage.getItem('retainiq-active-run') || '';
+    } catch (_) {}
+    if (!runPattern.test(runId)) return;
+
+    document.querySelectorAll('a[href]').forEach(link => {
+        try {
+            const target = new URL(link.href, window.location.href);
+            if (target.origin !== window.location.origin || target.hash.startsWith('#detail-')) return;
+            if (!target.searchParams.has('run')) target.searchParams.set('run', runId);
+            link.href = target.toString();
+        } catch (_) {}
+    });
+
+    if (window.location.pathname === '/dashboard' && !params.has('run')) {
+        params.set('run', runId);
+        window.location.replace(`${window.location.pathname}?${params}`);
+    }
 })();
 </script>
 </body>
