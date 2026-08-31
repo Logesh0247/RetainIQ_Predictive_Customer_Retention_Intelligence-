@@ -7,47 +7,43 @@
     <p>{{ kpis.total_customers }} customers processed successfully.</p>
 </section>
 
-<div class="kpi-grid kpi-grid-compact">
-    <div class="kpi-card">
-        <div class="kpi-label">Total Customers</div>
-        <div class="kpi-value">{{ kpis.total_customers }}</div>
-    </div>
-    <div class="kpi-card kpi-warning">
-        <div class="kpi-label">Customers at Risk</div>
-        <div class="kpi-value">{{ kpis.high_risk_count + kpis.medium_risk_count }}</div>
-    </div>
-    <div class="kpi-card kpi-danger">
-        <div class="kpi-label">High Risk</div>
-        <div class="kpi-value">{{ kpis.high_risk_count }}</div>
-    </div>
-    <div class="kpi-card kpi-warning">
-        <div class="kpi-label">Medium Risk</div>
-        <div class="kpi-value">{{ kpis.medium_risk_count }}</div>
-    </div>
-    <div class="kpi-card kpi-success">
-        <div class="kpi-label">Low Risk</div>
-        <div class="kpi-value">{{ kpis.low_risk_count }}</div>
-    </div>
-    <div class="kpi-card">
-        <div class="kpi-label">Avg. Probability</div>
-        <div class="kpi-value">{{ kpis.avg_churn_probability }}%</div>
-    </div>
+<div class="table-actions bulk-result-actions bulk-result-actions-top">
+    <a href="{{ url_for('prediction_dashboard', run=run_id) if run_id else url_for('prediction_dashboard') }}" class="btn btn-secondary">Prediction Dashboard</a>
+    <a href="{{ url_for('download_results', filename=download_filename, run=run_id) }}" class="btn btn-primary">↓ Download CSV</a>
+    <a href="{{ url_for('bulk_prediction', new=1) }}" class="btn btn-outline">Run New Prediction</a>
+    {% if total_rows > max_display_rows %}<span class="table-note">Showing {{ max_display_rows }} of {{ total_rows }} customers per view. The CSV contains all rows.</span>{% endif %}
 </div>
 
-<p class="section-desc" style="margin-bottom: 18px;">
-    If you retain the high-risk group, you protect about
-    <strong>${{ '%.2f'|format(kpis.high_risk_revenue) }}</strong> in monthly revenue.
-    Medium + high risk together is about
-    <strong>${{ '%.2f'|format(kpis.at_risk_revenue) }}</strong> / month.
-</p>
-
-<div class="table-actions">
-    <a href="{{ url_for('download_results', filename=download_filename) }}" class="btn btn-primary">Download CSV</a>
-    <a href="{{ url_for('prediction_dashboard', run=run_id) if run_id else url_for('prediction_dashboard') }}" class="btn btn-secondary">View Full Dashboard</a>
-    {% if total_rows > max_display_rows %}
-    <span class="table-note">Showing the first {{ max_display_rows }} of {{ total_rows }} customers per view — the CSV download has all {{ total_rows }}.</span>
-    {% endif %}
+<div class="section-eyebrow">SCORING COMPLETE</div>
+<h2 class="section-title">Prediction Summary</h2>
+<div class="kpi-grid kpi-grid-compact bulk-result-kpis">
+    <div class="kpi-card"><div class="kpi-label">Total Customers</div><div class="kpi-value">{{ kpis.total_customers }}</div></div>
+    <div class="kpi-card kpi-danger"><div class="kpi-label">Predicted Churn</div><div class="kpi-value">{{ kpis.predicted_churners }}</div><small>{{ kpis.churn_rate }}% of portfolio</small></div>
+    <div class="kpi-card kpi-success"><div class="kpi-label">Predicted Retain</div><div class="kpi-value">{{ kpis.total_customers - kpis.predicted_churners }}</div><small>{{ (100 - kpis.churn_rate)|round(1) }}% of portfolio</small></div>
+    <div class="kpi-card kpi-danger"><div class="kpi-label">High Risk</div><div class="kpi-value">{{ kpis.high_risk_count }}</div><small>Priority intervention</small></div>
+    <div class="kpi-card"><div class="kpi-label">Avg. Probability</div><div class="kpi-value">{{ kpis.avg_churn_probability }}%</div><small>Portfolio average</small></div>
+    <div class="kpi-card kpi-warning"><div class="kpi-label">Est. Revenue at Risk</div><div class="kpi-value">${{ '%.2f'|format(kpis.at_risk_revenue) }}</div><small>Monthly charges · med/high</small></div>
 </div>
+
+<section class="bulk-result-risk">
+    <div><span class="section-eyebrow">RISK DISTRIBUTION</span><h2>Customer Risk Mix</h2><p>Operational segments calculated from actual churn probabilities.</p></div>
+    <div class="bulk-risk-bars">
+        <div><span><i class="low"></i>Low Risk <small>{{ kpis.low_risk_count }}</small></span><b>{{ kpis.low_risk_pct }}%</b><em><i class="low" style="width:{{ kpis.low_risk_pct }}%"></i></em></div>
+        <div><span><i class="medium"></i>Medium Risk <small>{{ kpis.medium_risk_count }}</small></span><b>{{ kpis.medium_risk_pct }}%</b><em><i class="medium" style="width:{{ kpis.medium_risk_pct }}%"></i></em></div>
+        <div><span><i class="high"></i>High Risk <small>{{ kpis.high_risk_count }}</small></span><b>{{ kpis.high_risk_pct }}%</b><em><i class="high" style="width:{{ kpis.high_risk_pct }}%"></i></em></div>
+    </div>
+</section>
+
+<section class="dashboard-section bulk-top-risk">
+    <div class="section-eyebrow">PRIORITY QUEUE</div>
+    <h2 class="section-title">Top 10 Highest-Risk Customers</h2>
+    <div class="table-wrap"><table class="data-table"><thead><tr><th>Customer ID</th><th>Probability</th><th>Risk Level</th><th>Monthly Charges</th><th>Tenure</th><th>Contract</th></tr></thead><tbody>
+        {% for customer in top_risk %}<tr><td class="mono">{{ customer.id }}</td><td class="mono">{{ customer.probability_pct }}%</td><td><span class="risk-badge risk-badge-sm {{ customer.risk_css }}">{{ customer.risk_level }}</span></td><td>${{ '%.2f'|format(customer.monthly_charges) }}</td><td>{{ customer.tenure }} mo</td><td>{{ customer.contract }}</td></tr>{% endfor %}
+    </tbody></table></div>
+</section>
+
+<div class="section-eyebrow">CUSTOMER RESULTS</div>
+<h2 class="section-title">Review Scored Customers</h2>
 
 <!-- Pure-CSS sort tabs: three server-pre-sorted views, toggled with the radio hack -->
 <div class="tabset">

@@ -113,12 +113,12 @@ def _score_dataframe(df):
     }
 
 
-def run_bulk_prediction_from_bytes(raw, filename="upload.csv"):
+def _read_csv_bytes(raw, filename="upload.csv"):
+    """Parse an uploaded CSV with the same encoding fallbacks used for scoring."""
     if not raw:
         raise BulkPredictionError("The uploaded file is empty.")
     if filename and not allowed_file(filename):
-        raise BulkPredictionError("Invalid file type. Only .csv files are supported.")
-    
+        raise BulkPredictionError("Invalid file type. Please upload a CSV file.")
     df = None
     last_err = None
     for encoding in ["utf-8-sig", "utf-8", "latin1", "cp1252", "iso-8859-1"]:
@@ -129,13 +129,48 @@ def run_bulk_prediction_from_bytes(raw, filename="upload.csv"):
             raise BulkPredictionError("The uploaded CSV file has no data.") from exc
         except Exception as exc:
             last_err = exc
-            continue
-
     if df is None:
         raise BulkPredictionError(
-            f"The uploaded file could not be parsed as a valid CSV: {last_err or 'unknown encoding error'}"
-        )
-    return _score_dataframe(df)
+            "The file could not be read as a valid CSV. Check its formatting and try again."
+        ) from last_err
+    return df
+
+
+def inspect_bulk_prediction_bytes(raw, filename="upload.csv"):
+    """Return a safe, non-predictive dataset profile for the upload workspace."""
+    from src.preprocessing import REQUIRED_COLUMNS, _normalize_columns
+
+    df = _read_csv_bytes(raw, filename)
+    if df.empty:
+        raise BulkPredictionError("The uploaded CSV contains no customer rows.")
+    if len(df) > MAX_ROWS:
+        raise BulkPredictionError(f"The uploaded CSV has too many rows (max {MAX_ROWS:,}).")
+
+    normalized = _normalize_columns(df)
+    missing = [column for column in REQUIRED_COLUMNS if column not in normalized.columns]
+    required = [
+        {"name": column, "present": column in normalized.columns}
+        for column in REQUIRED_COLUMNS
+    ]
+    preview = df.head(5).copy()
+    preview = preview.astype(object).where(pd.notna(preview), None)
+    return {
+        "filename": os.path.basename(filename),
+        "rows": int(len(df)),
+        "columns": int(len(df.columns)),
+        "column_names": [str(column) for column in df.columns],
+        "missing_values": int(df.isna().sum().sum()),
+        "duplicate_rows": int(df.duplicated().sum()),
+        "required_columns": required,
+        "missing_columns": missing,
+        "valid": not missing,
+        "preview_columns": [str(column) for column in preview.columns],
+        "preview_rows": preview.to_dict("records"),
+    }
+
+
+def run_bulk_prediction_from_bytes(raw, filename="upload.csv"):
+    return _score_dataframe(_read_csv_bytes(raw, filename))
 
 
 def run_bulk_prediction_from_path(path):
@@ -280,6 +315,114 @@ def compute_dashboard_kpis(results_df):
         "at_risk_revenue": round(at_risk_rev, 2),
         "high_risk_revenue": round(high_rev, 2),
     }
+
+
+def _series_analysis(df, labels, groups):
+    """Return actual customer counts and predicted churn rates per business segment."""
+    rows = []
+    for label, mask in zip(labels, groups):
+        segment = df.loc[mask]
+        rows.append({
+            "label": label,
+            "count": int(len(segment)),
+            "rate": round(float((segment["Prediction"] == "Likely to Churn").mean() * 100), 1)
+                    if len(segment) else 0.0,
+        })
+    return rows
+
+
+def build_dashboard_analytics(results_df):
+    """Build chart-ready summaries exclusively from scored result rows."""
+    if results_df is None or results_df.empty:
+        return {"probability": [], "contract": [], "tenure": [], "charges": []}
+    probability = results_df["Churn Probability"].astype(float)
+    tenure = results_df["Tenure"].astype(float)
+    charges = results_df["Monthly Charges"].astype(float)
+    return {
+        "probability": [
+            {"label": label, "count": int(mask.sum()),
+             "pct": round(float(mask.sum()) / len(results_df) * 100, 1)}
+            for label, mask in zip(
+                ["0–20%", "20–40%", "40–60%", "60–80%", "80–100%"],
+                [probability < 20, (probability >= 20) & (probability < 40),
+                 (probability >= 40) & (probability < 60),
+                 (probability >= 60) & (probability < 80), probability >= 80],
+            )
+        ],
+        "contract": _series_analysis(
+            results_df,
+            ["Month-to-month", "One year", "Two year"],
+            [results_df["Contract"] == value for value in
+             ["Month-to-month", "One year", "Two year"]],
+        ),
+        "tenure": _series_analysis(
+            results_df,
+            ["0–12 mo", "13–24 mo", "25–48 mo", "49–72 mo", "73+ mo"],
+            [tenure <= 12, (tenure > 12) & (tenure <= 24),
+             (tenure > 24) & (tenure <= 48), (tenure > 48) & (tenure <= 72), tenure > 72],
+        ),
+        "charges": _series_analysis(
+            results_df,
+            ["<$40", "$40–69", "$70–99", "$100+"],
+            [charges < 40, (charges >= 40) & (charges < 70),
+             (charges >= 70) & (charges < 100), charges >= 100],
+        ),
+    }
+
+
+def build_dashboard_page(bundle, risk="All", prediction="All", contract="All", search="",
+                         page=1, page_size=10):
+    """Filter and paginate scored customers without sending large datasets to the browser."""
+    results = bundle["results_df"]
+    mask = pd.Series(True, index=results.index)
+    if risk in ("High Risk", "Medium Risk", "Low Risk"):
+        mask &= results["Risk Level"] == risk
+    if prediction in ("Likely to Churn", "Likely to Stay"):
+        mask &= results["Prediction"] == prediction
+    if contract in ("Month-to-month", "One year", "Two year"):
+        mask &= results["Contract"] == contract
+    if search:
+        mask &= results["Customer ID"].astype(str).str.contains(str(search), case=False, regex=False)
+
+    filtered = results.loc[mask].sort_values("Churn Probability", ascending=False)
+    total = len(filtered)
+    pages = max(1, int(np.ceil(total / page_size)))
+    page = max(1, min(int(page), pages))
+    indices = filtered.index[(page - 1) * page_size:page * page_size]
+    rows = []
+    for idx in indices:
+        row = results.loc[idx]
+        prob = float(bundle["probabilities"][idx])
+        record = _record_from_row(row, bundle["cleaned_df"].loc[idx], prob)
+        rows.append(record)
+    return {
+        "rows": rows,
+        "total": int(total),
+        "page": page,
+        "pages": pages,
+        "page_size": page_size,
+        "kpis": compute_dashboard_kpis(filtered),
+        "analytics": build_dashboard_analytics(filtered),
+    }
+
+
+def build_customer_detail(bundle, customer_id):
+    """Return one actual scored customer with model drivers and profile attributes."""
+    ids = bundle["results_df"]["Customer ID"].astype(str)
+    matches = bundle["results_df"].index[ids.str.casefold() == str(customer_id).strip().casefold()]
+    if len(matches) == 0:
+        return None
+    idx = int(matches[0])
+    result = bundle["results_df"].loc[idx]
+    cleaned = bundle["cleaned_df"].loc[idx]
+    prob = float(bundle["probabilities"][idx])
+    return _record_from_row(result, cleaned, prob, extra={
+        "internet_service": str(cleaned.get("InternetService", "Unavailable")),
+        "payment_method": str(cleaned.get("PaymentMethod", "Unavailable")),
+        "gender": str(cleaned.get("gender", "Unavailable")),
+        "senior_citizen": "Yes" if int(cleaned.get("SeniorCitizen", 0)) == 1 else "No",
+        "top_drivers": get_top_drivers(bundle["feature_frame"].iloc[[idx]]),
+    })
 
 
 def save_results_csv(results_df, filename, directory=None):

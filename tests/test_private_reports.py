@@ -83,6 +83,29 @@ class PrivateReportsTests(unittest.TestCase):
         shared_csvs = [name for name in os.listdir(self.tmp) if name.endswith(".csv")]
         self.assertEqual(shared_csvs, [])
 
+    def test_completed_run_resumes_until_new_upload_is_requested(self):
+        scored = self.owner.post(
+            "/bulk-prediction",
+            data={"customer_csv": (io.BytesIO(TINY_CSV.encode()), "mine.csv")},
+            content_type="multipart/form-data",
+            follow_redirects=False,
+        )
+        self.assertEqual(scored.status_code, 302)
+        results_location = scored.headers["Location"]
+
+        # Normal navigation back to Bulk Prediction resumes the completed run.
+        resumed = self.owner.get("/bulk-prediction", follow_redirects=False)
+        self.assertEqual(resumed.status_code, 302)
+        self.assertEqual(resumed.headers["Location"], results_location)
+
+        # Only the explicit action opens a fresh form, without deleting old data.
+        fresh = self.owner.get("/bulk-prediction?new=1")
+        self.assertEqual(fresh.status_code, 200)
+        self.assertIn(b"Upload Customer Dataset", fresh.data)
+        dashboard = self.owner.get("/dashboard")
+        self.assertEqual(dashboard.status_code, 200)
+        self.assertNotIn(b"No Signal Yet", dashboard.data)
+
     def test_results_open_without_cookies(self):
         """Upload & Predict must show results even if the browser drops cookies."""
         poster = app.test_client()
@@ -101,3 +124,10 @@ class PrivateReportsTests(unittest.TestCase):
         self.assertEqual(results.status_code, 200)
         self.assertIn(b"Bulk Prediction Results", results.data)
         self.assertNotIn(b"Run a bulk prediction first", results.data)
+
+        run_id = location.split("run=", 1)[1]
+        self.assertIn(f'/dashboard?run={run_id}'.encode(), results.data)
+        dashboard = stranger.get(f"/dashboard?run={run_id}")
+        self.assertEqual(dashboard.status_code, 200)
+        self.assertNotIn(b"No Signal Yet", dashboard.data)
+        self.assertIn(b"Total Customers", dashboard.data)

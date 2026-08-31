@@ -2,110 +2,221 @@
 {% block title %}Bulk Prediction{% endblock %}
 {% block content %}
 
-<section class="page-header">
-    <h1>Bulk Customer Scoring</h1>
-    <p>Upload a CSV of your customer base to read the signal on your entire portfolio at once.</p>
+<section class="bulk-hero">
+    <div>
+        <div class="section-eyebrow">PORTFOLIO SCORING WORKSPACE</div>
+        <h1>Bulk Customer Scoring</h1>
+        <p>Upload your customer portfolio and generate AI-powered churn predictions at scale.</p>
+    </div>
+    <div class="bulk-hero-status">
+        <span class="engine-status {{ '' if model_ready else 'engine-offline' }}"><i></i> Prediction Engine {{ 'Ready' if model_ready else 'Unavailable' }}</span>
+        <small>CSV format · Maximum {{ max_upload_mb }} MB</small>
+    </div>
 </section>
 
 {% if not model_ready %}
-<div class="alert alert-error">The prediction model is currently unavailable. Bulk predictions cannot run until models/best_model.pkl is present.</div>
+<div class="alert alert-error">Prediction is temporarily unavailable because the model could not be loaded. Your dataset will not be submitted.</div>
 {% endif %}
 
-<div class="workflow" style="margin-bottom: 24px;">
-    <div class="workflow-chain">
-        <span class="workflow-step">Upload CSV</span><span class="workflow-arrow">→</span>
-        <span class="workflow-step">Validate Dataset</span><span class="workflow-arrow">→</span>
-        <span class="workflow-step">Process Customers</span><span class="workflow-arrow">→</span>
-        <span class="workflow-step">Predict Churn</span><span class="workflow-arrow">→</span>
-        <span class="workflow-step">Generate Results</span>
-    </div>
-</div>
+<nav class="scoring-stepper" aria-label="Bulk scoring progress">
+    <div class="scoring-step active" data-step="1"><span>1</span><div><small>STEP 01</small><strong>Upload</strong></div></div><i></i>
+    <div class="scoring-step" data-step="2"><span>2</span><div><small>STEP 02</small><strong>Validate</strong></div></div><i></i>
+    <div class="scoring-step" data-step="3"><span>3</span><div><small>STEP 03</small><strong>Process</strong></div></div><i></i>
+    <div class="scoring-step" data-step="4"><span>4</span><div><small>STEP 04</small><strong>Predict</strong></div></div><i></i>
+    <div class="scoring-step" data-step="5"><span>5</span><div><small>STEP 05</small><strong>Results</strong></div></div>
+</nav>
 
-<div class="upload-layout">
-    <form class="form-card upload-card" id="bulk-upload-form" method="POST" action="{{ url_for('bulk_prediction') }}" enctype="multipart/form-data">
-        <h3 class="form-section-title">Upload CSV</h3>
+<form id="bulk-upload-form" method="POST" action="{{ url_for('bulk_prediction') }}" enctype="multipart/form-data" novalidate>
+    <section class="bulk-workspace-card upload-workspace">
+        <header>
+            <div><span class="workspace-index">01</span><div><h2>Upload Customer Dataset</h2><p>Select the customer portfolio you want RetainIQ to analyze.</p></div></div>
+            <span class="workspace-state" id="upload-state">Waiting for data</span>
+        </header>
 
-        <label class="drop-zone" id="drop-zone" for="customer_csv">
+        <label class="premium-drop-zone" id="drop-zone" for="customer_csv">
             <input type="file" id="customer_csv" name="customer_csv" accept=".csv,text/csv" required>
-            <span class="drop-icon" aria-hidden="true"></span>
-            <strong class="drop-title">Drop your customer CSV here</strong>
-            <span class="drop-sub">or click to browse · .csv only · max 10 MB</span>
-            <span class="file-pill" id="drop-name">No file selected</span>
+            <span class="premium-upload-icon"><i></i></span>
+            <strong>Drop your customer CSV here</strong>
+            <span>or <u>click to browse</u> from your device</span>
+            <small>CSV files only · Maximum {{ max_upload_mb }} MB</small>
         </label>
 
-        <details class="col-guide">
-            <summary>Required columns</summary>
-            <div class="col-chips">
-                <span>customerID <em>optional</em></span>
-                <span>gender</span>
-                <span>SeniorCitizen</span>
-                <span>Partner</span>
-                <span>Dependents</span>
-                <span>tenure</span>
-                <span>PhoneService</span>
-                <span>MultipleLines</span>
-                <span>InternetService</span>
-                <span>OnlineSecurity</span>
-                <span>OnlineBackup</span>
-                <span>DeviceProtection</span>
-                <span>TechSupport</span>
-                <span>StreamingTV</span>
-                <span>StreamingMovies</span>
-                <span>Contract</span>
-                <span>PaperlessBilling</span>
-                <span>PaymentMethod</span>
-                <span>MonthlyCharges</span>
-                <span>TotalCharges</span>
-            </div>
-        </details>
-
-        <div class="form-actions">
-            <button type="submit" class="btn btn-primary" id="bulk-submit" {{ 'disabled' if not model_ready }}>Upload &amp; Predict</button>
+        <div class="selected-file" id="selected-file" hidden>
+            <span class="file-type-icon">CSV</span>
+            <div><strong id="file-name"></strong><span id="file-meta"></span></div>
+            <span class="file-status selected" id="file-status">Selected</span>
+            <button type="button" id="remove-file" aria-label="Remove selected file">×</button>
         </div>
-    </form>
-</div>
 
-<aside class="info-panel demo-panel">
-    <h3>No file handy?</h3>
-    <p>Run the bundled sample list to see KPIs, risk bands, and the results table immediately.</p>
-    <form method="POST" action="{{ url_for('bulk_prediction_sample') }}">
-        <button type="submit" class="btn btn-secondary" {{ 'disabled' if not model_ready }}>Score sample customers</button>
+        <div class="validation-alert" id="validation-alert" hidden aria-live="polite"></div>
+    </section>
+
+    <section class="bulk-workspace-card validation-workspace" id="validation-workspace" hidden>
+        <header>
+            <div><span class="workspace-index">02</span><div><h2>Dataset Validation</h2><p>Review data readiness before sending customers to the prediction engine.</p></div></div>
+            <span class="workspace-state" id="validation-state">Checking</span>
+        </header>
+
+        <div class="quality-grid">
+            <article><span>Rows</span><strong id="quality-rows">—</strong><small>Customer records</small></article>
+            <article><span>Columns</span><strong id="quality-columns">—</strong><small>Detected fields</small></article>
+            <article><span>Missing Values</span><strong id="quality-missing">—</strong><small>Across all cells</small></article>
+            <article><span>Duplicate Rows</span><strong id="quality-duplicates">—</strong><small>Exact duplicates</small></article>
+        </div>
+
+        <details class="required-columns-panel" id="required-panel">
+            <summary><div><strong>Required Columns</strong><span id="required-summary">{{ required_columns|length }} model inputs</span></div><em>Expand <b>⌄</b></em></summary>
+            <div class="required-column-grid" id="required-columns">
+                {% for column in required_columns %}<span data-column="{{ column }}"><i>○</i>{{ column }}</span>{% endfor %}
+            </div>
+            <div class="missing-columns-message" id="missing-columns-message" hidden></div>
+        </details>
+    </section>
+
+    <section class="bulk-workspace-card preview-workspace" id="preview-workspace" hidden>
+        <header>
+            <div><span class="workspace-index">03</span><div><h2>Dataset Preview</h2><p>Showing the first five records only. Your complete dataset will be scored.</p></div></div>
+            <span class="workspace-state state-ready">Preview ready</span>
+        </header>
+        <div class="preview-table-wrap"><table class="data-table"><thead id="preview-head"></thead><tbody id="preview-body"></tbody></table></div>
+        <div class="column-footnote" id="column-footnote"></div>
+    </section>
+
+    <section class="scoring-action-card" id="scoring-action" hidden>
+        <div class="action-copy">
+            <span class="action-orb">◎</span>
+            <div><strong id="action-title">File selected</strong><p id="action-description">Validate the selected CSV before model scoring.</p></div>
+        </div>
+        <button type="submit" class="btn btn-primary bulk-primary-action" id="bulk-submit" disabled>Run Churn Prediction →</button>
+    </section>
+</form>
+
+<aside class="sample-dataset-card">
+    <div><span class="sample-icon">⌁</span><div><h3>No dataset handy?</h3><p>Explore the full scoring workflow with the bundled sample customer portfolio.</p></div></div>
+    <form method="POST" action="{{ url_for('bulk_prediction_sample') }}" class="sample-form">
+        <button type="submit" class="btn btn-secondary sample-submit" {{ 'disabled' if not model_ready }}>Score Sample Dataset →</button>
     </form>
 </aside>
 
 <script>
-(function () {
-  var input = document.getElementById("customer_csv");
-  var nameEl = document.getElementById("drop-name");
-  var zone = document.getElementById("drop-zone");
-  if (!input || !nameEl || !zone) return;
-  function showName(file) {
-    nameEl.textContent = file ? file.name : "No file selected";
-    zone.classList.toggle("has-file", !!file);
-  }
-  input.addEventListener("change", function () { showName(input.files[0]); });
-  ["dragenter", "dragover"].forEach(function (ev) {
-    zone.addEventListener(ev, function (e) { e.preventDefault(); zone.classList.add("is-over"); });
-  });
-  ["dragleave", "drop"].forEach(function (ev) {
-    zone.addEventListener(ev, function (e) { e.preventDefault(); zone.classList.remove("is-over"); });
-  });
-  zone.addEventListener("drop", function (e) {
-    if (e.dataTransfer.files && e.dataTransfer.files[0]) {
-      input.files = e.dataTransfer.files;
-      showName(e.dataTransfer.files[0]);
+(() => {
+    'use strict';
+    const input = document.getElementById('customer_csv');
+    const zone = document.getElementById('drop-zone');
+    const submit = document.getElementById('bulk-submit');
+    const form = document.getElementById('bulk-upload-form');
+    const maxBytes = {{ max_upload_mb }} * 1024 * 1024;
+    const modelReady = {{ model_ready|tojson }};
+    let validated = false;
+    let validating = false;
+    const $ = id => document.getElementById(id);
+    const escapeHtml = value => String(value ?? '').replace(/[&<>'"]/g, char => ({'&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#39;','"':'&quot;'}[char]));
+    const formatNumber = value => new Intl.NumberFormat().format(Number(value || 0));
+    const formatBytes = bytes => bytes < 1024 ? `${bytes} B` : bytes < 1048576 ? `${(bytes/1024).toFixed(1)} KB` : `${(bytes/1048576).toFixed(2)} MB`;
+
+    function setStep(step) {
+        document.querySelectorAll('.scoring-step').forEach(el => {
+            const n = Number(el.dataset.step); el.classList.toggle('active', n === step); el.classList.toggle('complete', n < step);
+            el.querySelector(':scope > span').textContent = n < step ? '✓' : n;
+        });
     }
-  });
-  var form = document.getElementById("bulk-upload-form");
-  var submitBtn = document.getElementById("bulk-submit");
-  if (form && submitBtn) {
-    form.addEventListener("submit", function () {
-      if (!input.files || !input.files[0]) return;
-      submitBtn.disabled = true;
-      submitBtn.textContent = "Scoring customers…";
+
+    function alertMessage(type, title, message) {
+        const el = $('validation-alert'); el.hidden = false; el.className = `validation-alert ${type}`;
+        el.innerHTML = `<span>${type === 'success' ? '✓' : '!'}</span><div><strong>${escapeHtml(title)}</strong><p>${escapeHtml(message)}</p></div>`;
+    }
+
+    function resetFile() {
+        input.value = ''; validated = false; validating = false; zone.hidden = false; $('selected-file').hidden = true;
+        $('validation-workspace').hidden = true; $('preview-workspace').hidden = true; $('validation-alert').hidden = true;
+        $('upload-state').textContent = 'Waiting for data'; submit.type = 'submit'; submit.textContent = 'Run Churn Prediction →'; submit.disabled = true;
+        $('scoring-action').hidden = true; setStep(1);
+    }
+
+    function failValidation(title, message, profile) {
+        validated = false; validating = false; setStep(2); submit.textContent = 'Run Churn Prediction →'; submit.disabled = true; $('scoring-action').hidden = true;
+        $('file-status').className = 'file-status invalid'; $('file-status').textContent = 'Validation failed'; $('upload-state').textContent = 'Action required';
+        $('validation-state').textContent = 'Not ready'; $('validation-state').className = 'workspace-state state-error';
+        alertMessage('error', title, message);
+        if (profile) renderProfile(profile);
+    }
+
+    function renderProfile(data) {
+        $('validation-workspace').hidden = false;
+        $('quality-rows').textContent = formatNumber(data.rows); $('quality-columns').textContent = formatNumber(data.columns);
+        $('quality-missing').textContent = formatNumber(data.missing_values); $('quality-duplicates').textContent = formatNumber(data.duplicate_rows);
+        const statuses = new Map((data.required_columns || []).map(item => [item.name, item.present]));
+        document.querySelectorAll('#required-columns [data-column]').forEach(el => {
+            const present = statuses.get(el.dataset.column); el.className = present ? 'column-present' : 'column-missing'; el.querySelector('i').textContent = present ? '✓' : '×';
+        });
+        const missing = data.missing_columns || [];
+        $('required-summary').textContent = missing.length ? `${missing.length} missing` : `${data.required_columns.length} of ${data.required_columns.length} present`;
+        $('missing-columns-message').hidden = !missing.length;
+        if (missing.length) { $('missing-columns-message').innerHTML = `<strong>${missing.length} required column${missing.length === 1 ? ' is' : 's are'} missing</strong><p>Please add: ${missing.map(escapeHtml).join(', ')}</p>`; $('required-panel').open = true; }
+    }
+
+    function renderPreview(data) {
+        const columns = data.preview_columns || [];
+        $('preview-head').innerHTML = `<tr>${columns.map(column => `<th>${escapeHtml(column)}</th>`).join('')}</tr>`;
+        $('preview-body').innerHTML = (data.preview_rows || []).map(row => `<tr>${columns.map(column => `<td>${row[column] === null ? '<span class="null-value">Missing</span>' : escapeHtml(row[column])}</td>`).join('')}</tr>`).join('');
+        $('column-footnote').textContent = `${formatNumber(data.rows)} rows · ${formatNumber(data.columns)} columns detected · Preview limited to 5 rows`;
+        $('preview-workspace').hidden = false;
+    }
+
+    function selectFile(file) {
+        if (!file) return resetFile();
+        validated = false; validating = false; zone.hidden = true; $('selected-file').hidden = false;
+        $('file-name').textContent = file.name; $('file-meta').textContent = `${formatBytes(file.size)} · CSV dataset`;
+        $('file-status').className = 'file-status selected'; $('file-status').textContent = 'Selected'; $('upload-state').textContent = 'File selected';
+        $('validation-workspace').hidden = true; $('preview-workspace').hidden = true; $('validation-alert').hidden = true;
+        $('scoring-action').hidden = true; submit.type = 'submit'; submit.textContent = 'Run Churn Prediction →'; submit.disabled = true;
+        setStep(1);
+    }
+
+    async function validateFile(file) {
+        if (!file) return resetFile();
+        $('file-status').className = 'file-status'; $('file-status').innerHTML = '<i class="spinner"></i> Validating';
+        $('validation-workspace').hidden = false; $('preview-workspace').hidden = true; $('validation-alert').hidden = true; setStep(2);
+        submit.textContent = 'Validating Dataset…'; submit.disabled = true; validating = true;
+        if (!file.name.toLowerCase().endsWith('.csv')) return failValidation('Invalid file type', 'Please upload a CSV file.');
+        if (!file.size) return failValidation('Empty file', 'The selected file contains no data.');
+        if (file.size > maxBytes) return failValidation('File is too large', `The maximum supported upload size is {{ max_upload_mb }} MB.`);
+        const payload = new FormData(); payload.append('customer_csv', file);
+        try {
+            const response = await fetch('{{ url_for("validate_bulk_prediction") }}', {method:'POST', body:payload});
+            const data = await response.json();
+            if (!response.ok || !data.valid) return failValidation('Dataset validation failed', data.error || `${data.missing_columns.length} required columns are missing.`, data.valid === false ? data : null);
+            renderProfile(data); renderPreview(data); validated = true; validating = false; setStep(3);
+            $('file-status').className = 'file-status valid'; $('file-status').textContent = '✓ Ready'; $('upload-state').textContent = 'Dataset ready';
+            $('validation-state').textContent = 'Ready for prediction'; $('validation-state').className = 'workspace-state state-ready';
+            alertMessage('success', 'Dataset ready for prediction', `${formatNumber(data.rows)} customer records passed structural validation.`);
+            $('scoring-action').hidden = false; submit.type = 'submit'; submit.disabled = !modelReady; submit.textContent = 'Run Churn Prediction →';
+            $('action-title').textContent = 'Dataset validated and ready'; $('action-description').textContent = `${formatNumber(data.rows)} uploaded customer records are ready for model scoring.`;
+        } catch (_) { failValidation('Validation unavailable', 'The dataset could not be validated. Check your connection and try again.'); }
+    }
+
+    input.addEventListener('change', () => {
+        const file = input.files[0];
+        selectFile(file);
+        if (file) validateFile(file);
     });
-  }
+    $('remove-file').addEventListener('click', resetFile);
+    ['dragenter','dragover'].forEach(name => zone.addEventListener(name, event => { event.preventDefault(); zone.classList.add('is-over'); }));
+    ['dragleave','drop'].forEach(name => zone.addEventListener(name, event => { event.preventDefault(); zone.classList.remove('is-over'); }));
+    zone.addEventListener('drop', event => {
+        const file = event.dataTransfer.files?.[0];
+        if (!file) return;
+        const transfer = new DataTransfer(); transfer.items.add(file); input.files = transfer.files;
+        selectFile(file); validateFile(file);
+    });
+    form.addEventListener('submit', event => {
+        if (!validated || validating) { event.preventDefault(); return; }
+        submit.disabled = true; submit.textContent = 'Processing…'; setStep(4);
+    });
+    document.querySelectorAll('.sample-form').forEach(sample => sample.addEventListener('submit', event => {
+        const button = event.currentTarget.querySelector('button');
+        if (button) { button.disabled = true; button.textContent = 'Processing…'; }
+    }));
 })();
 </script>
-
 {% endblock %}
