@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>{% block title %}RetainIQ{% endblock %} | RetainIQ</title>
-<link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}?v=upload4">
+<link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}?v=home8">
 </head>
 <body>
 
@@ -66,5 +66,16 @@
 
 </div>
 
+<script>
+// Persist the existing Day / Night Ops control without changing its CSS behavior.
+(() => {
+    const toggle = document.getElementById('ops-mode');
+    if (!toggle) return;
+    try { toggle.checked = localStorage.getItem('retainiq-ops-mode') === 'day'; } catch (_) {}
+    toggle.addEventListener('change', () => {
+        try { localStorage.setItem('retainiq-ops-mode', toggle.checked ? 'day' : 'night'); } catch (_) {}
+    });
+})();
+</script>
 </body>
 </html>

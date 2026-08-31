@@ -16,7 +16,7 @@ from flask import (
 )
 from werkzeug.middleware.proxy_fix import ProxyFix
 
-from src.preprocessing import PreprocessingError
+from src.preprocessing import PreprocessingError, REQUIRED_COLUMNS
 from utils.prediction import (
     predict_customer, is_model_available, ModelLoadError, load_model,
     MODEL_COMPARISON,
@@ -24,10 +24,13 @@ from utils.prediction import (
 from utils.bulk_prediction import (
     run_bulk_prediction,
     run_sample_prediction,
+    inspect_bulk_prediction_bytes,
     compute_dashboard_kpis,
     save_results_csv,
     build_display_records,
     build_top_risk_records,
+    build_dashboard_page,
+    build_customer_detail,
     save_bundle_cache,
     load_bundle_cache,
     BulkPredictionError,
@@ -411,9 +414,33 @@ def _load_run_bundle(run=None):
 
 @app.route("/")
 def home():
+    """Product command center with only real model and prediction-session state."""
+    model_bundle = load_model()
+    prediction_bundle, _, run_id = _load_run_bundle()
+    snapshot = None
+    latest_activity = None
+    if prediction_bundle is not None:
+        snapshot = compute_dashboard_kpis(prediction_bundle["results_df"])
+        generated_at = session.get("latest_results_generated_at")
+        if not generated_at and run_id:
+            folder = _run_folder(run_id)
+            if folder:
+                generated_at = datetime.fromtimestamp(os.path.getmtime(folder)).strftime(
+                    "%d %b %Y, %I:%M %p"
+                )
+        latest_activity = {
+            "label": "Bulk prediction completed",
+            "detail": f"{len(prediction_bundle['results_df']):,} customers scored",
+            "time": generated_at,
+            "run_id": run_id,
+        }
     return render_template(
         "home.html",
-        model_ready=is_model_available()
+        model_ready=model_bundle is not None,
+        model_name=model_bundle.get("name") if model_bundle else None,
+        explainability_ready=bool(model_bundle and hasattr(model_bundle.get("model"), "coef_")),
+        snapshot=snapshot,
+        latest_activity=latest_activity,
     )
 
 
@@ -516,6 +543,7 @@ def bulk_results_view():
             records_by_prob=build_display_records(bundle, sort_by="probability")[:MAX_DISPLAY_ROWS],
             records_by_charges=build_display_records(bundle, sort_by="charges")[:MAX_DISPLAY_ROWS],
             records_by_tenure=build_display_records(bundle, sort_by="tenure")[:MAX_DISPLAY_ROWS],
+            top_risk=build_top_risk_records(bundle),
             max_display_rows=MAX_DISPLAY_ROWS,
             total_rows=total_rows,
             run_id=run_id,
@@ -530,7 +558,12 @@ def bulk_results_view():
 def bulk_prediction():
 
     if request.method == "GET":
-        return render_template("bulk_prediction.html", model_ready=is_model_available())
+        return render_template(
+            "bulk_prediction.html",
+            model_ready=is_model_available(),
+            max_upload_mb=app.config["MAX_CONTENT_LENGTH"] // (1024 * 1024),
+            required_columns=REQUIRED_COLUMNS,
+        )
 
     try:
         file_obj = request.files.get("customer_csv")
@@ -538,11 +571,37 @@ def bulk_prediction():
         return _render_bulk_results(bundle)
     except BulkPredictionError as exc:
         flash(str(exc), "error")
-        return render_template("bulk_prediction.html", model_ready=is_model_available())
-    except Exception as exc:
+        return render_template(
+            "bulk_prediction.html", model_ready=is_model_available(),
+            max_upload_mb=app.config["MAX_CONTENT_LENGTH"] // (1024 * 1024),
+            required_columns=REQUIRED_COLUMNS,
+        )
+    except Exception:
         logger.exception("Unexpected error during bulk prediction")
-        flash(f"An unexpected error occurred during prediction: {exc}", "error")
-        return render_template("bulk_prediction.html", model_ready=is_model_available())
+        flash("Prediction could not be completed. Please verify the dataset and try again.", "error")
+        return render_template(
+            "bulk_prediction.html", model_ready=is_model_available(),
+            max_upload_mb=app.config["MAX_CONTENT_LENGTH"] // (1024 * 1024),
+            required_columns=REQUIRED_COLUMNS,
+        )
+
+
+@app.route("/bulk-prediction/validate", methods=["POST"])
+def validate_bulk_prediction():
+    """Validate and profile a CSV before the user starts model scoring."""
+    file_obj = request.files.get("customer_csv")
+    if file_obj is None or not getattr(file_obj, "filename", ""):
+        return jsonify({"error": "Please select a CSV file before continuing."}), 400
+    try:
+        raw = file_obj.read()
+        profile = inspect_bulk_prediction_bytes(raw, file_obj.filename)
+        status = 200 if profile["valid"] else 422
+        return jsonify(profile), status
+    except BulkPredictionError as exc:
+        return jsonify({"error": str(exc)}), 400
+    except Exception:
+        logger.exception("Dataset validation failed")
+        return jsonify({"error": "Dataset validation could not be completed. Check the CSV and try again."}), 500
 
 
 @app.route("/bulk-prediction/sample", methods=["POST"])
@@ -552,11 +611,19 @@ def bulk_prediction_sample():
         return _render_bulk_results(bundle)
     except BulkPredictionError as exc:
         flash(str(exc), "error")
-        return render_template("bulk_prediction.html", model_ready=is_model_available())
-    except Exception as exc:
+        return render_template(
+            "bulk_prediction.html", model_ready=is_model_available(),
+            max_upload_mb=app.config["MAX_CONTENT_LENGTH"] // (1024 * 1024),
+            required_columns=REQUIRED_COLUMNS,
+        )
+    except Exception:
         logger.exception("Unexpected error during sample bulk prediction")
-        flash(f"An error occurred while scoring sample customers: {exc}", "error")
-        return render_template("bulk_prediction.html", model_ready=is_model_available())
+        flash("The sample prediction could not be completed. Please try again.", "error")
+        return render_template(
+            "bulk_prediction.html", model_ready=is_model_available(),
+            max_upload_mb=app.config["MAX_CONTENT_LENGTH"] // (1024 * 1024),
+            required_columns=REQUIRED_COLUMNS,
+        )
 
 
 # ---------------------------------------------------------------------------
@@ -600,6 +667,7 @@ def prediction_dashboard():
                 "prediction_dashboard.html",
                 kpis=None,
                 generated_at=None,
+                model_ready=is_model_available(),
             )
 
         kpis = compute_dashboard_kpis(bundle["results_df"])
@@ -612,14 +680,42 @@ def prediction_dashboard():
             "prediction_dashboard.html",
             kpis=kpis,
             top_risk=top_risk,
+            dashboard_data=build_dashboard_page(bundle),
             generated_at=generated_at,
             download_filename=download_filename,
             run_id=run_id,
+            model_ready=is_model_available(),
         )
-    except Exception as exc:
+    except Exception:
         logger.exception("Error loading prediction dashboard")
-        flash(f"Could not load prediction dashboard: {exc}", "error")
+        flash("The prediction dashboard could not be loaded. Please run the prediction again.", "error")
         return redirect(url_for("bulk_prediction"))
+
+
+@app.route("/dashboard/data")
+def prediction_dashboard_data():
+    """Filtered dashboard data and exact customer lookup for the interactive UI."""
+    try:
+        bundle, _, _ = _load_run_bundle(request.args.get("run"))
+        if bundle is None:
+            return jsonify({"error": "Prediction data is not available."}), 404
+        customer_id = (request.args.get("customer_id") or "").strip()
+        if customer_id:
+            customer = build_customer_detail(bundle, customer_id)
+            if customer is None:
+                return jsonify({"error": "Customer not found. Please check the Customer ID."}), 404
+            return jsonify({"customer": customer})
+        return jsonify(build_dashboard_page(
+            bundle,
+            risk=request.args.get("risk", "All"),
+            prediction=request.args.get("prediction", "All"),
+            contract=request.args.get("contract", "All"),
+            search=(request.args.get("search") or "").strip(),
+            page=request.args.get("page", 1, type=int) or 1,
+        ))
+    except Exception:
+        logger.exception("Dashboard data request failed")
+        return jsonify({"error": "Dashboard data could not be loaded. Please try again."}), 500
 
 
 # ---------------------------------------------------------------------------
@@ -656,13 +752,16 @@ def review_dashboard(filename):
             "prediction_dashboard.html",
             kpis=kpis,
             top_risk=top_risk,
+            dashboard_data=build_dashboard_page(bundle),
             generated_at=generated_at,
             download_filename=filename,
+            run_id=run_id,
             historical_dashboard=True,
+            model_ready=is_model_available(),
         )
-    except Exception as exc:
+    except Exception:
         logger.exception("Error loading historical review dashboard")
-        flash(f"Could not load review dashboard: {exc}", "error")
+        flash("This prediction dashboard could not be loaded.", "error")
         return redirect(url_for("reports"))
 
 
