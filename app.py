@@ -558,6 +558,14 @@ def bulk_results_view():
 def bulk_prediction():
 
     if request.method == "GET":
+        # Keep the latest completed scoring workspace intact while users move
+        # around the application. Only the explicit "Run New Prediction"
+        # action opens a fresh upload form; the old run remains available until
+        # a replacement dataset has scored successfully.
+        if request.args.get("new") != "1":
+            existing_bundle, _, existing_run_id = _load_run_bundle()
+            if existing_bundle is not None:
+                return redirect(url_for("bulk_results_view", run=existing_run_id))
         return render_template(
             "bulk_prediction.html",
             model_ready=is_model_available(),

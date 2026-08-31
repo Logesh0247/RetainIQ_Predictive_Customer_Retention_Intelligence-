@@ -31,7 +31,7 @@
         <nav class="sidebar-nav">
             <a href="{{ url_for('home') }}" class="{{ 'active' if request.endpoint == 'home' }}"><span class="nav-dot"></span>Home</a>
             <a href="{{ url_for('single_prediction') }}" class="{{ 'active' if request.endpoint == 'single_prediction' }}"><span class="nav-dot"></span>Single Prediction</a>
-            <a href="{{ url_for('bulk_prediction') }}" class="{{ 'active' if request.endpoint == 'bulk_prediction' }}"><span class="nav-dot"></span>Bulk Prediction</a>
+            <a href="{{ url_for('bulk_prediction') }}" class="{{ 'active' if request.endpoint in ('bulk_prediction', 'bulk_results_view') }}"><span class="nav-dot"></span>Bulk Prediction</a>
             <a href="{{ url_for('prediction_dashboard') }}" class="{{ 'active' if request.endpoint == 'prediction_dashboard' }}"><span class="nav-dot"></span>Prediction Dashboard</a>
             <a href="{{ url_for('reports') }}" class="{{ 'active' if request.endpoint == 'reports' }}"><span class="nav-dot"></span>Reports</a>
             <a href="{{ url_for('about') }}" class="{{ 'active' if request.endpoint == 'about' }}"><span class="nav-dot"></span>About</a>

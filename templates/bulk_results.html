@@ -10,7 +10,7 @@
 <div class="table-actions bulk-result-actions bulk-result-actions-top">
     <a href="{{ url_for('prediction_dashboard', run=run_id) if run_id else url_for('prediction_dashboard') }}" class="btn btn-secondary">Prediction Dashboard</a>
     <a href="{{ url_for('download_results', filename=download_filename, run=run_id) }}" class="btn btn-primary">↓ Download CSV</a>
-    <a href="{{ url_for('bulk_prediction') }}" class="btn btn-outline">Run New Prediction</a>
+    <a href="{{ url_for('bulk_prediction', new=1) }}" class="btn btn-outline">Run New Prediction</a>
     {% if total_rows > max_display_rows %}<span class="table-note">Showing {{ max_display_rows }} of {{ total_rows }} customers per view. The CSV contains all rows.</span>{% endif %}
 </div>
 
