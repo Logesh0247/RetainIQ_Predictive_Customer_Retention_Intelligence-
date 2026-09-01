@@ -38,6 +38,7 @@ from utils.bulk_prediction import (
     REPORTS_DIR,
 )
 from utils.recommendation import generate_recommendation
+from utils.universal_churn import run_universal_churn, UniversalChurnError
 
 
 # ---------------------------------------------------------------------------
@@ -573,17 +574,79 @@ def bulk_prediction():
             required_columns=REQUIRED_COLUMNS,
         )
 
-    try:
-        file_obj = request.files.get("customer_csv")
-        bundle = run_bulk_prediction(file_obj)
-        return _render_bulk_results(bundle)
-    except BulkPredictionError as exc:
-        flash(str(exc), "error")
+    file_obj = request.files.get("customer_csv")
+    if file_obj is None or not getattr(file_obj, "filename", ""):
+        flash("Please select a CSV file to upload.", "error")
         return render_template(
             "bulk_prediction.html", model_ready=is_model_available(),
             max_upload_mb=app.config["MAX_CONTENT_LENGTH"] // (1024 * 1024),
             required_columns=REQUIRED_COLUMNS,
         )
+
+    # Auto-extract CSV from ZIP files (Kaggle downloads are ZIPs)
+    import io as _io
+    original_filename = file_obj.filename
+    raw_bytes = file_obj.read()
+    if original_filename.lower().endswith('.zip'):
+        import zipfile
+        try:
+            zf = zipfile.ZipFile(_io.BytesIO(raw_bytes))
+            csv_files = [f for f in zf.namelist() if f.lower().endswith('.csv')]
+            if not csv_files:
+                flash("The ZIP file does not contain any CSV files. Please extract the CSV and upload it directly.", "error")
+                return render_template(
+                    "bulk_prediction.html", model_ready=is_model_available(),
+                    max_upload_mb=app.config["MAX_CONTENT_LENGTH"] // (1024 * 1024),
+                    required_columns=REQUIRED_COLUMNS,
+                )
+            raw_bytes = zf.read(csv_files[0])
+            original_filename = csv_files[0]
+        except zipfile.BadZipFile:
+            flash("The uploaded file is not a valid ZIP file.", "error")
+            return render_template(
+                "bulk_prediction.html", model_ready=is_model_available(),
+                max_upload_mb=app.config["MAX_CONTENT_LENGTH"] // (1024 * 1024),
+                required_columns=REQUIRED_COLUMNS,
+            )
+
+    # Create a file-like object from the (possibly extracted) bytes
+    file_like = _io.BytesIO(raw_bytes)
+    file_like.filename = original_filename
+
+    # Try Telco-specific prediction first
+    try:
+        bundle = run_bulk_prediction(file_like)
+        return _render_bulk_results(bundle)
+    except BulkPredictionError as telco_exc:
+        # If Telco failed, try universal churn engine as fallback
+        logger.info("Telco prediction failed, trying universal churn engine: %s", telco_exc)
+        try:
+            file_like.seek(0)
+            bundle = run_universal_churn(file_like)
+            return _render_bulk_results(bundle)
+        except UniversalChurnError as uni_exc:
+            flash(
+                f"Could not predict churn: {uni_exc}. "
+                "Ensure your CSV has a churn target column (e.g. 'Churn', 'Exited', 'Attrition', 'Cancelled').",
+                "error"
+            )
+            return render_template(
+                "bulk_prediction.html", model_ready=is_model_available(),
+                max_upload_mb=app.config["MAX_CONTENT_LENGTH"] // (1024 * 1024),
+                required_columns=REQUIRED_COLUMNS,
+            )
+        except Exception:
+            logger.exception("Universal churn prediction also failed")
+            flash(
+                f"Prediction failed: {telco_exc}. "
+                "If this is a non-Telco dataset, ensure it has a churn target column.",
+                "error"
+            )
+            return render_template(
+                "bulk_prediction.html", model_ready=is_model_available(),
+                max_upload_mb=app.config["MAX_CONTENT_LENGTH"] // (1024 * 1024),
+                required_columns=REQUIRED_COLUMNS,
+            )
     except Exception:
         logger.exception("Unexpected error during bulk prediction")
         flash("Prediction could not be completed. Please verify the dataset and try again.", "error")
@@ -596,17 +659,102 @@ def bulk_prediction():
 
 @app.route("/bulk-prediction/validate", methods=["POST"])
 def validate_bulk_prediction():
-    """Validate and profile a CSV before the user starts model scoring."""
+    """Validate and profile a CSV. Accepts any CSV or ZIP — falls back to universal engine if not Telco."""
     file_obj = request.files.get("customer_csv")
     if file_obj is None or not getattr(file_obj, "filename", ""):
         return jsonify({"error": "Please select a CSV file before continuing."}), 400
     try:
         raw = file_obj.read()
-        profile = inspect_bulk_prediction_bytes(raw, file_obj.filename)
-        status = 200 if profile["valid"] else 422
-        return jsonify(profile), status
-    except BulkPredictionError as exc:
-        return jsonify({"error": str(exc)}), 400
+        filename = file_obj.filename
+
+        # Auto-extract CSV from ZIP files
+        if filename.lower().endswith('.zip'):
+            import zipfile, io as _io
+            try:
+                zf = zipfile.ZipFile(_io.BytesIO(raw))
+                csv_files = [f for f in zf.namelist() if f.lower().endswith('.csv')]
+                if not csv_files:
+                    return jsonify({"error": "The ZIP file does not contain any CSV files."}), 400
+                raw = zf.read(csv_files[0])
+                filename = csv_files[0]
+            except zipfile.BadZipFile:
+                return jsonify({"error": "The uploaded file is not a valid ZIP file."}), 400
+
+        # Try Telco validation first
+        telco_error = None
+        profile = None
+        try:
+            profile = inspect_bulk_prediction_bytes(raw, filename)
+        except BulkPredictionError as exc:
+            telco_error = str(exc)
+
+        # If Telco validation succeeded and passed, use Telco engine
+        if profile and profile.get("valid"):
+            profile["engine"] = "telco"
+            return jsonify(profile), 200
+
+        # Telco failed — try universal engine
+        from utils.universal_churn import detect_target_column, UniversalChurnError
+        import pandas as pd, io
+
+        try:
+            df = None
+            for encoding in ["utf-8-sig", "utf-8", "latin1", "cp1252"]:
+                try:
+                    df = pd.read_csv(io.BytesIO(raw), encoding=encoding, keep_default_na=False, na_values=[])
+                    break
+                except Exception:
+                    continue
+
+            if df is None or df.empty:
+                error = telco_error or "The uploaded CSV is empty or could not be read."
+                return jsonify({"error": error}), 400
+
+            # Count truly missing values: only NaN cells (not empty strings,
+            # which are often semantically valid like "no churn reason" for retained customers).
+            # With keep_default_na=False + na_values=[], NaN only appears from explicit CSV "NaN" markers.
+            missing_count = int(df.isna().sum().sum())
+
+            target_col, _ = detect_target_column(df)
+
+            # Build profile for universal engine
+            preview = df.head(5).copy()
+            preview = preview.astype(object).where(pd.notna(preview), None)
+
+            heuristic_mode = target_col is None
+            universal_profile = {
+                "filename": os.path.basename(filename),
+                "rows": int(len(df)),
+                "columns": int(len(df.columns)),
+                "column_names": [str(c) for c in df.columns],
+                "missing_values": missing_count,
+                "duplicate_rows": int(df.duplicated().sum()),
+                "required_columns": [],
+                "missing_columns": [],
+                "valid": True,
+                "engine": "universal",
+                "target_column": target_col,
+                "heuristic_mode": heuristic_mode,
+                "heuristic_note": "No churn label column found — churn risk will be estimated using feature-based heuristics." if heuristic_mode else None,
+                "preview_columns": [str(c) for c in preview.columns],
+                "preview_rows": preview.to_dict("records"),
+            }
+            return jsonify(universal_profile), 200
+
+        except (UniversalChurnError, Exception) as uni_exc:
+            logger.warning("Universal engine failed: %s", uni_exc)
+            try:
+                import pandas as pd, io
+                df_debug = pd.read_csv(io.BytesIO(raw))
+                logger.warning("Dataset columns: %s", list(df_debug.columns))
+                logger.warning("Dataset shape: %s", df_debug.shape)
+            except Exception:
+                pass
+            error = str(uni_exc) if "churn" in str(uni_exc).lower() else (
+                telco_error or "Dataset could not be validated. Ensure it has a churn target column (e.g. 'Churn', 'Exited', 'Attrition')."
+            )
+            return jsonify({"error": error}), 422
+
     except Exception:
         logger.exception("Dataset validation failed")
         return jsonify({"error": "Dataset validation could not be completed. Check the CSV and try again."}), 500

@@ -154,12 +154,30 @@ def inspect_bulk_prediction_bytes(raw, filename="upload.csv"):
     ]
     preview = df.head(5).copy()
     preview = preview.astype(object).where(pd.notna(preview), None)
+
+    # Count missing values accurately: re-read with no aggressive NA detection,
+    # then count only NaN cells. This avoids false positives from values like
+    # "NA", "null", "None", or empty strings that are semantically valid.
+    missing_count = 0
+    try:
+        df_profile = None
+        for enc in ["utf-8-sig", "utf-8", "latin1", "cp1252", "iso-8859-1"]:
+            try:
+                df_profile = pd.read_csv(io.BytesIO(raw), encoding=enc, keep_default_na=False, na_values=[])
+                break
+            except Exception:
+                continue
+        if df_profile is not None:
+            missing_count = int(df_profile.isna().sum().sum())
+    except Exception:
+        missing_count = int(df.isna().sum().sum())
+
     return {
         "filename": os.path.basename(filename),
         "rows": int(len(df)),
         "columns": int(len(df.columns)),
         "column_names": [str(column) for column in df.columns],
-        "missing_values": int(df.isna().sum().sum()),
+        "missing_values": missing_count,
         "duplicate_rows": int(df.duplicated().sum()),
         "required_columns": required,
         "missing_columns": missing,
@@ -198,34 +216,46 @@ def run_bulk_prediction(file_storage):
 
 
 def _record_from_row(row, cleaned_row, prob, extra=None):
-    risk = row["Risk Level"] if hasattr(row, "get") else row.get("Risk Level", "Low Risk") if isinstance(row, dict) else row["Risk Level"]
-    m_charges = row["Monthly Charges"] if hasattr(row, "get") else row.get("Monthly Charges", 0) if isinstance(row, dict) else row["Monthly Charges"]
-    c_id = row["Customer ID"] if hasattr(row, "get") else row.get("Customer ID", "") if isinstance(row, dict) else row["Customer ID"]
-    pred = row["Prediction"] if hasattr(row, "get") else row.get("Prediction", "Likely to Stay") if isinstance(row, dict) else row["Prediction"]
-    prob_pct = row["Churn Probability"] if hasattr(row, "get") else row.get("Churn Probability", 0) if isinstance(row, dict) else row["Churn Probability"]
-    tenure_val = row["Tenure"] if hasattr(row, "get") else row.get("Tenure", 0) if isinstance(row, dict) else row["Tenure"]
-    contract_val = row["Contract"] if hasattr(row, "get") else row.get("Contract", "Month-to-month") if isinstance(row, dict) else row["Contract"]
+    def _get(obj, key, default=""):
+        if hasattr(obj, 'get'):
+            return obj.get(key, default)
+        try:
+            return obj[key]
+        except (KeyError, IndexError):
+            return default
 
-    recs = generate_recommendation(cleaned_row, prob, risk)
+    risk = _get(row, "Risk Level", "Low Risk")
+    m_charges = _get(row, "Monthly Charges", 0)
+    c_id = _get(row, "Customer ID", "")
+    pred = _get(row, "Prediction", "Likely to Stay")
+    prob_pct = _get(row, "Churn Probability", 0)
+    tenure_val = _get(row, "Tenure", 0)
+    contract_val = _get(row, "Contract", "Month-to-month")
+
+    if extra and "recommendations" in extra:
+        recs = extra["recommendations"]
+    else:
+        try:
+            recs = generate_recommendation(cleaned_row, prob, risk)
+        except Exception:
+            recs = None
     if not recs:
         recs = ["Monitor account."]
 
     record = {
-        "id": str(c_id),
-        "probability_pct": float(prob_pct),
-        "prediction": str(pred),
-        "will_churn": str(pred) == "Likely to Churn",
-        "risk_level": str(risk),
-        "risk_css": risk_css_class(str(risk)),
-        "signal_bars": signal_strength(float(prob)),
-        "monthly_charges": float(m_charges),
-        "tenure": int(tenure_val),
-        "contract": str(contract_val),
-        "recommendations": recs,
-        "primary_action": recs[0],
-        "is_high": str(risk) == "High Risk",
-        "is_mtm": str(contract_val) == "Month-to-month",
+        "id": str(c_id), "probability_pct": float(prob_pct), "prediction": str(pred),
+        "will_churn": str(pred) == "Likely to Churn", "risk_level": str(risk),
+        "risk_css": risk_css_class(str(risk)), "signal_bars": signal_strength(float(prob)),
+        "monthly_charges": float(m_charges), "tenure": int(tenure_val),
+        "contract": str(contract_val), "recommendations": recs, "primary_action": recs[0],
+        "is_high": str(risk) == "High Risk", "is_mtm": str(contract_val) == "Month-to-month",
         "is_high_bill": float(m_charges) >= 80,
+        # Data attributes for dynamic filtering
+        "data_risk": str(risk).lower().replace(" ", "-"),
+        "data_prediction": str(pred).lower().replace(" ", "-"),
+        "data_contract": str(contract_val).lower().replace(" ", "-"),
+        "data_charges": float(m_charges),
+        "data_tenure": int(tenure_val),
         "row_classes": " ".join(filter(None, [
             "is-high" if str(risk) == "High Risk" else "",
             "is-mtm" if str(contract_val) == "Month-to-month" else "",
@@ -239,48 +269,90 @@ def _record_from_row(row, cleaned_row, prob, extra=None):
 
 def build_display_records(bundle, sort_by="probability", max_rows=MAX_DISPLAY_ROWS):
     results, cleaned, probs = bundle["results_df"], bundle["cleaned_df"], bundle["probabilities"]
-    n_rows = len(results)
-    
-    if sort_by == "charges":
+    is_universal = bundle.get("is_universal", False)
+    precomputed_recs = bundle.get("all_recommendations") if is_universal else None
+    if sort_by == "charges" and "Monthly Charges" in results.columns:
         order = np.argsort(-results["Monthly Charges"].values)
-    elif sort_by == "tenure":
+    elif sort_by == "tenure" and "Tenure" in results.columns:
         order = np.argsort(results["Tenure"].values)
-    else:  # probability
+    else:
         order = np.argsort(-probs)
-
     top_indices = order[:max_rows]
     records = []
     for idx in top_indices:
         idx = int(idx)
-        records.append(_record_from_row(results.iloc[idx], cleaned.iloc[idx], float(probs[idx])))
+        extra = None
+        if precomputed_recs and idx < len(precomputed_recs):
+            extra = {"recommendations": precomputed_recs[idx]}
+        records.append(_record_from_row(results.iloc[idx], cleaned.iloc[idx], float(probs[idx]), extra=extra))
     return records
+
+
+def _get_universal_drivers(bundle, idx):
+    try:
+        feature_names = bundle.get("feature_names", [])
+        if not feature_names:
+            return None
+        # Get importances from model or from bundle (heuristic mode)
+        model = bundle.get("model")
+        if model is not None and hasattr(model, "feature_importances_"):
+            importances = model.feature_importances_
+        elif bundle.get("feature_importances") is not None:
+            importances = bundle["feature_importances"]
+        else:
+            return None
+        feature_row = bundle["feature_frame"].iloc[[idx]]
+        contributions = []
+        for i, (name, importance) in enumerate(zip(feature_names, importances)):
+            if i >= len(feature_row.columns):
+                break
+            value = feature_row.iloc[0, i]
+            if importance > 0 and value != 0:
+                contributions.append((name, float(importance * abs(value))))
+        contributions.sort(key=lambda x: x[1], reverse=True)
+        top_drivers = [name.replace("_", " ").title() for name, _ in contributions[:4]]
+        return top_drivers if top_drivers else None
+    except Exception as exc:
+        logger.warning("Universal driver explanation failed: %s", exc)
+        return None
 
 
 def build_top_risk_records(bundle, top_n=TOP_N_WITH_DRIVERS):
     results, cleaned, features, probs = (
-        bundle["results_df"],
-        bundle["cleaned_df"],
-        bundle["feature_frame"],
-        bundle["probabilities"],
+        bundle["results_df"], bundle["cleaned_df"], bundle["feature_frame"], bundle["probabilities"],
     )
+    is_universal = bundle.get("is_universal", False)
+    precomputed_recs = bundle.get("all_recommendations") if is_universal else None
     records = []
     top_indices = np.argsort(-probs)[:top_n]
     for idx in top_indices:
         idx = int(idx)
         risk = str(results.iloc[idx]["Risk Level"])
-        recs = generate_recommendation(cleaned.iloc[idx], float(probs[idx]), risk)
+        if precomputed_recs and idx < len(precomputed_recs):
+            recs = precomputed_recs[idx]
+        elif is_universal:
+            from utils.universal_churn import generate_universal_recommendations
+            recs = generate_universal_recommendations(
+                results.iloc[idx], float(probs[idx]), risk,
+                feature_values=features.iloc[idx].values if hasattr(features, 'iloc') else None,
+                feature_names=bundle.get("feature_names"),
+                feature_importances=bundle.get("feature_importances"),
+                feature_stats=bundle.get("feature_stats"),
+            )
+        else:
+            recs = generate_recommendation(cleaned.iloc[idx], float(probs[idx]), risk)
         if not recs:
             recs = ["Monitor account."]
+        if is_universal:
+            top_drivers = _get_universal_drivers(bundle, idx)
+        else:
+            top_drivers = get_top_drivers(features.iloc[[idx]])
         records.append(_record_from_row(
-            results.iloc[idx],
-            cleaned.iloc[idx],
-            float(probs[idx]),
+            results.iloc[idx], cleaned.iloc[idx], float(probs[idx]),
             extra={
-                "internet_service": cleaned.iloc[idx].get("InternetService"),
-                "payment_method": cleaned.iloc[idx].get("PaymentMethod"),
-                "top_drivers": get_top_drivers(features.iloc[[idx]]),
-                "recommendations": recs,
-                "primary_action": recs[0],
+                "internet_service": cleaned.iloc[idx].get("InternetService", "N/A") if "InternetService" in cleaned.columns else "N/A",
+                "payment_method": cleaned.iloc[idx].get("PaymentMethod", "N/A") if "PaymentMethod" in cleaned.columns else "N/A",
+                "top_drivers": top_drivers, "recommendations": recs, "primary_action": recs[0],
             },
         ))
     return records
@@ -295,23 +367,24 @@ def compute_dashboard_kpis(results_df):
     med = int((results_df["Risk Level"] == "Medium Risk").sum())
     low = int((results_df["Risk Level"] == "Low Risk").sum())
     pct = lambda n: round(n / total * 100, 1) if total else 0.0
-    high_rev = float(results_df.loc[results_df["Risk Level"] == "High Risk", "Monthly Charges"].sum())
-    at_risk_rev = float(
-        results_df.loc[results_df["Risk Level"].isin(["High Risk", "Medium Risk"]), "Monthly Charges"].sum()
-    )
+    charges = pd.to_numeric(results_df["Monthly Charges"], errors='coerce').fillna(0)
+    tenure = pd.to_numeric(results_df["Tenure"], errors='coerce').fillna(0)
+    high_rev = float(charges[results_df["Risk Level"] == "High Risk"].sum())
+    at_risk_mask = results_df["Risk Level"].isin(["High Risk", "Medium Risk"])
+    at_risk_rev = float(charges[at_risk_mask].sum())
     return {
         "total_customers": total,
         "predicted_churners": churners,
         "churn_rate": round(churners / total * 100, 1),
-        "avg_churn_probability": round(results_df["Churn Probability"].mean(), 1),
+        "avg_churn_probability": round(pd.to_numeric(results_df["Churn Probability"], errors='coerce').mean(), 1),
         "high_risk_count": high,
         "medium_risk_count": med,
         "low_risk_count": low,
         "high_risk_pct": pct(high),
         "medium_risk_pct": pct(med),
         "low_risk_pct": pct(low),
-        "avg_monthly_charges": round(results_df["Monthly Charges"].mean(), 2),
-        "avg_tenure": round(results_df["Tenure"].mean(), 1),
+        "avg_monthly_charges": round(charges.mean(), 2),
+        "avg_tenure": round(tenure.mean(), 1),
         "at_risk_revenue": round(at_risk_rev, 2),
         "high_risk_revenue": round(high_rev, 2),
     }
@@ -336,37 +409,33 @@ def build_dashboard_analytics(results_df):
     if results_df is None or results_df.empty:
         return {"probability": [], "contract": [], "tenure": [], "charges": []}
     probability = results_df["Churn Probability"].astype(float)
-    tenure = results_df["Tenure"].astype(float)
-    charges = results_df["Monthly Charges"].astype(float)
+    if "Contract" in results_df.columns:
+        contract_labels = results_df["Contract"].value_counts().head(5).index.tolist()
+        contract_masks = [results_df["Contract"] == v for v in contract_labels]
+        contract = _series_analysis(results_df, contract_labels, contract_masks)
+    else:
+        contract = []
+    if "Tenure" in results_df.columns:
+        tenure = results_df["Tenure"].astype(float)
+        tenure_analysis = _series_analysis(results_df,
+            ["0–12 mo", "13–24 mo", "25–48 mo", "49–72 mo", "73+ mo"],
+            [tenure <= 12, (tenure > 12) & (tenure <= 24), (tenure > 24) & (tenure <= 48), (tenure > 48) & (tenure <= 72), tenure > 72])
+    else:
+        tenure_analysis = []
+    if "Monthly Charges" in results_df.columns:
+        charges = results_df["Monthly Charges"].astype(float)
+        charges_analysis = _series_analysis(results_df,
+            ["<$40", "$40–69", "$70–99", "$100+"],
+            [charges < 40, (charges >= 40) & (charges < 70), (charges >= 70) & (charges < 100), charges >= 100])
+    else:
+        charges_analysis = []
     return {
         "probability": [
-            {"label": label, "count": int(mask.sum()),
-             "pct": round(float(mask.sum()) / len(results_df) * 100, 1)}
-            for label, mask in zip(
-                ["0–20%", "20–40%", "40–60%", "60–80%", "80–100%"],
-                [probability < 20, (probability >= 20) & (probability < 40),
-                 (probability >= 40) & (probability < 60),
-                 (probability >= 60) & (probability < 80), probability >= 80],
-            )
+            {"label": label, "count": int(mask.sum()), "pct": round(float(mask.sum()) / len(results_df) * 100, 1)}
+            for label, mask in zip(["0–20%", "20–40%", "40–60%", "60–80%", "80–100%"],
+                [probability < 20, (probability >= 20) & (probability < 40), (probability >= 40) & (probability < 60), (probability >= 60) & (probability < 80), probability >= 80])
         ],
-        "contract": _series_analysis(
-            results_df,
-            ["Month-to-month", "One year", "Two year"],
-            [results_df["Contract"] == value for value in
-             ["Month-to-month", "One year", "Two year"]],
-        ),
-        "tenure": _series_analysis(
-            results_df,
-            ["0–12 mo", "13–24 mo", "25–48 mo", "49–72 mo", "73+ mo"],
-            [tenure <= 12, (tenure > 12) & (tenure <= 24),
-             (tenure > 24) & (tenure <= 48), (tenure > 48) & (tenure <= 72), tenure > 72],
-        ),
-        "charges": _series_analysis(
-            results_df,
-            ["<$40", "$40–69", "$70–99", "$100+"],
-            [charges < 40, (charges >= 40) & (charges < 70),
-             (charges >= 70) & (charges < 100), charges >= 100],
-        ),
+        "contract": contract, "tenure": tenure_analysis, "charges": charges_analysis,
     }
 
 
@@ -379,7 +448,7 @@ def build_dashboard_page(bundle, risk="All", prediction="All", contract="All", s
         mask &= results["Risk Level"] == risk
     if prediction in ("Likely to Churn", "Likely to Stay"):
         mask &= results["Prediction"] == prediction
-    if contract in ("Month-to-month", "One year", "Two year"):
+    if contract in ("Month-to-month", "One year", "Two year") and "Contract" in results.columns:
         mask &= results["Contract"] == contract
     if search:
         mask &= results["Customer ID"].astype(str).str.contains(str(search), case=False, regex=False)
@@ -389,11 +458,16 @@ def build_dashboard_page(bundle, risk="All", prediction="All", contract="All", s
     pages = max(1, int(np.ceil(total / page_size)))
     page = max(1, min(int(page), pages))
     indices = filtered.index[(page - 1) * page_size:page * page_size]
+    is_universal = bundle.get("is_universal", False)
+    precomputed_recs = bundle.get("all_recommendations") if is_universal else None
     rows = []
     for idx in indices:
         row = results.loc[idx]
         prob = float(bundle["probabilities"][idx])
-        record = _record_from_row(row, bundle["cleaned_df"].loc[idx], prob)
+        extra = None
+        if precomputed_recs and idx < len(precomputed_recs):
+            extra = {"recommendations": precomputed_recs[idx]}
+        record = _record_from_row(row, bundle["cleaned_df"].loc[idx], prob, extra=extra)
         rows.append(record)
     return {
         "rows": rows,
@@ -416,13 +490,28 @@ def build_customer_detail(bundle, customer_id):
     result = bundle["results_df"].loc[idx]
     cleaned = bundle["cleaned_df"].loc[idx]
     prob = float(bundle["probabilities"][idx])
-    return _record_from_row(result, cleaned, prob, extra={
-        "internet_service": str(cleaned.get("InternetService", "Unavailable")),
-        "payment_method": str(cleaned.get("PaymentMethod", "Unavailable")),
-        "gender": str(cleaned.get("gender", "Unavailable")),
-        "senior_citizen": "Yes" if int(cleaned.get("SeniorCitizen", 0)) == 1 else "No",
-        "top_drivers": get_top_drivers(bundle["feature_frame"].iloc[[idx]]),
-    })
+    is_universal = bundle.get("is_universal", False)
+    extra = {}
+    if is_universal:
+        # For universal bundles, use precomputed recommendations and drivers
+        precomputed_recs = bundle.get("all_recommendations")
+        if precomputed_recs and idx < len(precomputed_recs):
+            extra["recommendations"] = precomputed_recs[idx]
+        # Get universal drivers
+        extra["top_drivers"] = _get_universal_drivers(bundle, idx)
+        # Add generic profile attributes from cleaned data
+        for col in cleaned.index[:8]:
+            extra[str(col)] = str(cleaned[col])
+    else:
+        # Telco-specific attributes
+        extra.update({
+            "internet_service": str(cleaned.get("InternetService", "Unavailable")),
+            "payment_method": str(cleaned.get("PaymentMethod", "Unavailable")),
+            "gender": str(cleaned.get("gender", "Unavailable")),
+            "senior_citizen": "Yes" if int(cleaned.get("SeniorCitizen", 0)) == 1 else "No",
+            "top_drivers": get_top_drivers(bundle["feature_frame"].iloc[[idx]]),
+        })
+    return _record_from_row(result, cleaned, prob, extra=extra)
 
 
 def save_results_csv(results_df, filename, directory=None):
@@ -451,3 +540,4 @@ def load_bundle_cache(path):
     except Exception as exc:
         logger.warning("Could not load cache: %s", exc)
         return None
+

@@ -5,18 +5,14 @@
 <section class="bulk-hero">
     <div>
         <div class="section-eyebrow">PORTFOLIO SCORING WORKSPACE</div>
-        <h1>Bulk Customer Scoring</h1>
-        <p>Upload your customer portfolio and generate AI-powered churn predictions at scale.</p>
+        <h1>Bulk Churn Prediction</h1>
+        <p>Upload <strong>any</strong> customer churn dataset — RetainIQ auto-detects the schema, trains a model, and delivers predictions with the full dashboard experience.</p>
     </div>
     <div class="bulk-hero-status">
         <span class="engine-status {{ '' if model_ready else 'engine-offline' }}"><i></i> Prediction Engine {{ 'Ready' if model_ready else 'Unavailable' }}</span>
-        <small>CSV format · Maximum {{ max_upload_mb }} MB</small>
+        <small>CSV or ZIP · Any churn dataset · Maximum {{ max_upload_mb }} MB</small>
     </div>
 </section>
-
-{% if not model_ready %}
-<div class="alert alert-error">Prediction is temporarily unavailable because the model could not be loaded. Your dataset will not be submitted.</div>
-{% endif %}
 
 <nav class="scoring-stepper" aria-label="Bulk scoring progress">
     <div class="scoring-step active" data-step="1"><span>1</span><div><small>STEP 01</small><strong>Upload</strong></div></div><i></i>
@@ -29,16 +25,16 @@
 <form id="bulk-upload-form" method="POST" action="{{ url_for('bulk_prediction') }}" enctype="multipart/form-data" novalidate>
     <section class="bulk-workspace-card upload-workspace">
         <header>
-            <div><span class="workspace-index">01</span><div><h2>Upload Customer Dataset</h2><p>Select the customer portfolio you want RetainIQ to analyze.</p></div></div>
+            <div><span class="workspace-index">01</span><div><h2>Upload Churn Dataset</h2><p>Select any CSV with a churn target column (e.g. Churn, Exited, Attrition, Cancelled). Kaggle ZIP files work too.</p></div></div>
             <span class="workspace-state" id="upload-state">Waiting for data</span>
         </header>
 
         <label class="premium-drop-zone" id="drop-zone" for="customer_csv">
-            <input type="file" id="customer_csv" name="customer_csv" accept=".csv,text/csv" required>
+            <input type="file" id="customer_csv" name="customer_csv" accept=".csv,.zip,text/csv,application/zip" required>
             <span class="premium-upload-icon"><i></i></span>
-            <strong>Drop your customer CSV here</strong>
+            <strong>Drop your dataset here</strong>
             <span>or <u>click to browse</u> from your device</span>
-            <small>CSV files only · Maximum {{ max_upload_mb }} MB</small>
+            <small>CSV or ZIP files (Kaggle downloads work directly) · Maximum {{ max_upload_mb }} MB</small>
         </label>
 
         <div class="selected-file" id="selected-file" hidden>
@@ -65,7 +61,7 @@
         </div>
 
         <details class="required-columns-panel" id="required-panel">
-            <summary><div><strong>Required Columns</strong><span id="required-summary">{{ required_columns|length }} model inputs</span></div><em>Expand <b>⌄</b></em></summary>
+            <summary><div><strong>Column Check</strong><span id="required-summary">Checking…</span></div><em>Expand <b>⌄</b></em></summary>
             <div class="required-column-grid" id="required-columns">
                 {% for column in required_columns %}<span data-column="{{ column }}"><i>○</i>{{ column }}</span>{% endfor %}
             </div>
@@ -85,7 +81,7 @@
     <section class="scoring-action-card" id="scoring-action" hidden>
         <div class="action-copy">
             <span class="action-orb">◎</span>
-            <div><strong id="action-title">File selected</strong><p id="action-description">Validate the selected CSV before model scoring.</p></div>
+            <div><strong id="action-title">File selected</strong><p id="action-description">Validate the selected file before model scoring.</p></div>
         </div>
         <button type="submit" class="btn btn-primary bulk-primary-action" id="bulk-submit" disabled>Run Churn Prediction →</button>
     </section>
@@ -94,9 +90,15 @@
 <aside class="sample-dataset-card">
     <div><span class="sample-icon">⌁</span><div><h3>No dataset handy?</h3><p>Explore the full scoring workflow with the bundled sample customer portfolio.</p></div></div>
     <form method="POST" action="{{ url_for('bulk_prediction_sample') }}" class="sample-form">
-        <button type="submit" class="btn btn-secondary sample-submit" {{ 'disabled' if not model_ready }}>Score Sample Dataset →</button>
+        <button type="submit" class="btn btn-secondary sample-submit">Score Sample Dataset →</button>
     </form>
 </aside>
+
+<style>
+.engine-detected { padding: 8px 12px; background: var(--action-dim, rgba(59,130,246,0.1)); border-radius: 6px; margin-bottom: 6px; font-size: 0.82rem; }
+.engine-detected code { background: rgba(0,0,0,0.1); padding: 2px 6px; border-radius: 3px; font-size: 0.78rem; }
+.engine-note { font-size: 0.75rem; color: var(--muted); padding: 0 4px; }
+</style>
 
 <script>
 (() => {
@@ -106,7 +108,6 @@
     const submit = document.getElementById('bulk-submit');
     const form = document.getElementById('bulk-upload-form');
     const maxBytes = {{ max_upload_mb }} * 1024 * 1024;
-    const modelReady = {{ model_ready|tojson }};
     let validated = false;
     let validating = false;
     const $ = id => document.getElementById(id);
@@ -145,12 +146,25 @@
         $('validation-workspace').hidden = false;
         $('quality-rows').textContent = formatNumber(data.rows); $('quality-columns').textContent = formatNumber(data.columns);
         $('quality-missing').textContent = formatNumber(data.missing_values); $('quality-duplicates').textContent = formatNumber(data.duplicate_rows);
+        
+        if (data.engine === 'universal') {
+            $('required-panel').querySelector('summary div strong').textContent = 'Target Detection';
+            const targetInfo = data.target_column 
+                ? `<div class="engine-detected"><strong>✓ Churn target detected:</strong> <code>${escapeHtml(data.target_column)}</code></div><div class="engine-note">Universal prediction engine will train a model on your data automatically.</div>`
+                : `<div class="engine-detected"><strong>⚡ No churn label found — heuristic mode</strong></div><div class="engine-note">Churn risk will be estimated using feature-based heuristics (e.g., low engagement, high support calls, payment delays). Personalized recommendations will still be generated from your data.</div>`;
+            $('required-columns').innerHTML = '';
+            $('missing-columns-message').hidden = false;
+            $('missing-columns-message').innerHTML = targetInfo;
+            $('required-summary').textContent = data.target_column ? `Target: ${data.target_column}` : 'Heuristic mode (no label)';
+            return;
+        }
+        
         const statuses = new Map((data.required_columns || []).map(item => [item.name, item.present]));
         document.querySelectorAll('#required-columns [data-column]').forEach(el => {
             const present = statuses.get(el.dataset.column); el.className = present ? 'column-present' : 'column-missing'; el.querySelector('i').textContent = present ? '✓' : '×';
         });
         const missing = data.missing_columns || [];
-        $('required-summary').textContent = missing.length ? `${missing.length} missing` : `${data.required_columns.length} of ${data.required_columns.length} present`;
+        $('required-summary').textContent = missing.length ? `${missing.length} missing` : `All ${data.required_columns.length} columns present`;
         $('missing-columns-message').hidden = !missing.length;
         if (missing.length) { $('missing-columns-message').innerHTML = `<strong>${missing.length} required column${missing.length === 1 ? ' is' : 's are'} missing</strong><p>Please add: ${missing.map(escapeHtml).join(', ')}</p>`; $('required-panel').open = true; }
     }
@@ -166,7 +180,7 @@
     function selectFile(file) {
         if (!file) return resetFile();
         validated = false; validating = false; zone.hidden = true; $('selected-file').hidden = false;
-        $('file-name').textContent = file.name; $('file-meta').textContent = `${formatBytes(file.size)} · CSV dataset`;
+        $('file-name').textContent = file.name; $('file-meta').textContent = `${formatBytes(file.size)} · ${file.name.toLowerCase().endsWith('.zip') ? 'ZIP archive' : 'CSV dataset'}`;
         $('file-status').className = 'file-status selected'; $('file-status').textContent = 'Selected'; $('upload-state').textContent = 'File selected';
         $('validation-workspace').hidden = true; $('preview-workspace').hidden = true; $('validation-alert').hidden = true;
         $('scoring-action').hidden = true; submit.type = 'submit'; submit.textContent = 'Run Churn Prediction →'; submit.disabled = true;
@@ -178,21 +192,31 @@
         $('file-status').className = 'file-status'; $('file-status').innerHTML = '<i class="spinner"></i> Validating';
         $('validation-workspace').hidden = false; $('preview-workspace').hidden = true; $('validation-alert').hidden = true; setStep(2);
         submit.textContent = 'Validating Dataset…'; submit.disabled = true; validating = true;
-        if (!file.name.toLowerCase().endsWith('.csv')) return failValidation('Invalid file type', 'Please upload a CSV file.');
+        const name = file.name.toLowerCase();
+        if (!name.endsWith('.csv') && !name.endsWith('.zip')) return failValidation('Invalid file type', 'Please upload a CSV or ZIP file.');
         if (!file.size) return failValidation('Empty file', 'The selected file contains no data.');
         if (file.size > maxBytes) return failValidation('File is too large', `The maximum supported upload size is {{ max_upload_mb }} MB.`);
         const payload = new FormData(); payload.append('customer_csv', file);
         try {
             const response = await fetch('{{ url_for("validate_bulk_prediction") }}', {method:'POST', body:payload});
             const data = await response.json();
-            if (!response.ok || !data.valid) return failValidation('Dataset validation failed', data.error || `${data.missing_columns.length} required columns are missing.`, data.valid === false ? data : null);
+            if (!response.ok || !data.valid) {
+                const errorMsg = data.error || 'Validation failed. Ensure your CSV has a churn target column (e.g. Churn, Exited, Attrition, Cancelled).';
+                return failValidation('Dataset validation failed', errorMsg, data);
+            }
             renderProfile(data); renderPreview(data); validated = true; validating = false; setStep(3);
             $('file-status').className = 'file-status valid'; $('file-status').textContent = '✓ Ready'; $('upload-state').textContent = 'Dataset ready';
             $('validation-state').textContent = 'Ready for prediction'; $('validation-state').className = 'workspace-state state-ready';
-            alertMessage('success', 'Dataset ready for prediction', `${formatNumber(data.rows)} customer records passed structural validation.`);
-            $('scoring-action').hidden = false; submit.type = 'submit'; submit.disabled = !modelReady; submit.textContent = 'Run Churn Prediction →';
-            $('action-title').textContent = 'Dataset validated and ready'; $('action-description').textContent = `${formatNumber(data.rows)} uploaded customer records are ready for model scoring.`;
-        } catch (_) { failValidation('Validation unavailable', 'The dataset could not be validated. Check your connection and try again.'); }
+            const engineLabel = data.engine === 'universal' 
+                ? (data.heuristic_mode ? 'Universal AI engine — heuristic risk scoring (no label column found)' : 'Universal AI engine — model will be trained on your data')
+                : 'Telco model — ready for scoring';
+            alertMessage('success', 'Dataset ready for prediction', `${formatNumber(data.rows)} records validated. ${engineLabel}.`);
+            $('scoring-action').hidden = false; submit.type = 'submit'; submit.disabled = false; submit.textContent = 'Run Churn Prediction →';
+            $('action-title').textContent = data.engine === 'universal' 
+                ? (data.heuristic_mode ? 'Heuristic risk assessment ready' : 'Universal churn prediction ready') 
+                : 'Dataset validated and ready';
+            $('action-description').textContent = `${formatNumber(data.rows)} records ready for model scoring.`;
+        } catch (err) { failValidation('Validation unavailable', 'The dataset could not be validated. Check your connection and try again.'); }
     }
 
     input.addEventListener('change', () => {
