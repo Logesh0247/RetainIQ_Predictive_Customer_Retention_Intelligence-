@@ -5,10 +5,12 @@ RetainIQ -- Customer Churn Prediction & Retention Intelligence Platform.
 """
 
 import io
+import json
 import os
 import re
 import secrets
 import logging
+from collections import OrderedDict
 from datetime import datetime, timedelta
 
 from flask import (
@@ -20,8 +22,9 @@ from werkzeug.middleware.proxy_fix import ProxyFix
 from src.preprocessing import PreprocessingError, REQUIRED_COLUMNS
 from utils.prediction import (
     predict_customer, is_model_available, ModelLoadError, load_model,
-    MODEL_COMPARISON,
+    explain_prediction, simulate_what_if, MODEL_COMPARISON,
 )
+from utils.examples import get_example, EXAMPLE_KINDS
 from utils.bulk_prediction import (
     run_bulk_prediction,
     run_sample_prediction,
@@ -39,6 +42,8 @@ from utils.bulk_prediction import (
     REPORTS_DIR,
     UPLOADS_DIR,
 )
+import pandas as pd
+
 from utils.recommendation import generate_recommendation
 from utils.universal_churn import run_universal_churn, UniversalChurnError
 
@@ -443,68 +448,179 @@ def home():
 # Single prediction
 # ---------------------------------------------------------------------------
 
+SCORECARD_TOKEN_RE = re.compile(r"^[0-9a-f]{24}$")
+_SCORECARDS = OrderedDict()
+_SCORECARD_LIMIT = 60
+
+
+def _store_scorecard(scorecard):
+    """Keep the scored customer server-side so the result page is a GET.
+
+    Post/Redirect/Get means refreshing the result never re-submits the form and
+    the page can be linked to, reloaded and downloaded.
+    """
+    token = secrets.token_hex(12)
+    _SCORECARDS[token] = scorecard
+    _SCORECARDS.move_to_end(token)
+    while len(_SCORECARDS) > _SCORECARD_LIMIT:
+        _SCORECARDS.popitem(last=False)
+    owned = [item for item in (session.get("scorecards") or []) if SCORECARD_TOKEN_RE.match(str(item))]
+    owned.append(token)
+    session["scorecards"] = owned[-20:]
+    session.modified = True
+    return token
+
+
+def _get_scorecard(token):
+    if not token or not SCORECARD_TOKEN_RE.match(str(token)):
+        return None
+    scorecard = _SCORECARDS.get(token)
+    if scorecard is not None:
+        _SCORECARDS.move_to_end(token)
+    return scorecard
+
+
+def _score_single_customer(form_data):
+    """Score one customer and assemble everything the result page needs."""
+    result = predict_customer(form_data)
+    recommendations = generate_recommendation(
+        result["cleaned_record"],
+        result["probability"],
+        result["risk_level"],
+    )
+    drivers = explain_prediction(result["feature_frame"])
+    scenarios = simulate_what_if(result["cleaned_record"], result["probability"])
+    best_action = next((item for item in scenarios if item["improves"] and not item["projection"]), None)
+    model_bundle = load_model() or {}
+    record = dict(result["cleaned_record"])
+    return {
+        "customer": record,
+        "customer_id": str(record.get("customerID") or "Unscored customer"),
+        "probability": result["probability"],
+        "probability_pct": result["probability_pct"],
+        "prediction_label": result["prediction_label"],
+        "will_churn": result["will_churn"],
+        "risk_level": result["risk_level"],
+        "risk_css": result["risk_css"],
+        "signal_bars": result["signal_bars"],
+        "recommendations": recommendations,
+        "primary_action": recommendations[0] if recommendations else "Monitor account.",
+        "drivers": drivers,
+        "risk_drivers": [item for item in drivers if item["direction"] == "risk"],
+        "protective_drivers": [item for item in drivers if item["direction"] == "protective"],
+        "scenarios": scenarios,
+        "best_action": best_action,
+        "model_name": result["model_name"],
+        "model_metrics": model_bundle.get("metrics") or {},
+        "scored_at": datetime.now().strftime("%d %b %Y, %I:%M %p"),
+        "form_data": dict(form_data),
+    }
+
+
 @app.route("/single-prediction", methods=["GET", "POST"])
 def single_prediction():
 
     if request.method == "GET":
-
+        example = (request.args.get("example") or "").strip().lower()
+        form_data = get_example(example) if example in EXAMPLE_KINDS else {}
         return render_template(
             "single_prediction.html",
             fields=FORM_FIELDS,
-            form_data={},
-            errors=None
+            form_data=form_data,
+            example=example if form_data else None,
+            model_ready=is_model_available(),
+            errors=None,
         )
 
     form_data = request.form.to_dict()
 
     try:
-
-        result = predict_customer(form_data)
-
-        recommendations = generate_recommendation(
-            result["cleaned_record"],
-            result["probability"],
-            result["risk_level"]
-        )
-
-        return render_template(
-            "single_result.html",
-            customer=result["cleaned_record"],
-            probability_pct=result["probability_pct"],
-            prediction_label=result["prediction_label"],
-            will_churn=result["will_churn"],
-            risk_level=result["risk_level"],
-            risk_css=result["risk_css"],
-            signal_bars=result["signal_bars"],
-            recommendations=recommendations,
-            primary_action=recommendations[0] if recommendations else "Monitor account.",
-            top_drivers=result["top_drivers"],
-            model_name=result["model_name"],
-            form_data=form_data,
-            fields=FORM_FIELDS,
-        )
-
-    except PreprocessingError as exc:
-
+        scorecard = _score_single_customer(form_data)
+    except (PreprocessingError, ModelLoadError) as exc:
         flash(str(exc), "error")
-
         return render_template(
             "single_prediction.html",
             fields=FORM_FIELDS,
             form_data=form_data,
-            errors=str(exc)
+            model_ready=is_model_available(),
+            errors=str(exc),
         )
-
-    except ModelLoadError as exc:
-
-        flash(str(exc), "error")
-
+    except Exception:
+        logger.exception("Single prediction failed")
+        flash("This customer could not be scored. Please review the values and try again.", "error")
         return render_template(
             "single_prediction.html",
             fields=FORM_FIELDS,
             form_data=form_data,
-            errors=str(exc)
+            model_ready=is_model_available(),
+            errors="This customer could not be scored. Please review the values and try again.",
         )
+
+    return redirect(url_for("single_result", token=_store_scorecard(scorecard)))
+
+
+@app.route("/single-prediction/result/<token>")
+def single_result(token):
+    scorecard = _get_scorecard(token)
+    if scorecard is None:
+        flash("That scorecard has expired. Score the customer again to see the result.", "error")
+        return redirect(url_for("single_prediction"))
+    return render_template(
+        "single_result.html",
+        token=token,
+        fields=FORM_FIELDS,
+        api_payload=_api_payload(scorecard["customer"]),
+        **scorecard,
+    )
+
+
+@app.route("/single-prediction/result/<token>/download")
+def download_scorecard(token):
+    scorecard = _get_scorecard(token)
+    if scorecard is None:
+        abort(404)
+    row = dict(scorecard["customer"])
+    row.update({
+        "Churn Probability (%)": scorecard["probability_pct"],
+        "Prediction": scorecard["prediction_label"],
+        "Risk Level": scorecard["risk_level"],
+        "Recommended Action": scorecard["primary_action"],
+        "Also Consider": " | ".join(scorecard["recommendations"][1:]),
+        "Risk Factors": " | ".join(item["label"] for item in scorecard["risk_drivers"]),
+        "Protective Factors": " | ".join(item["label"] for item in scorecard["protective_drivers"]),
+        "Best What-If Action": scorecard["best_action"]["label"] if scorecard["best_action"] else "",
+        "Best What-If Probability (%)": scorecard["best_action"]["probability_pct"] if scorecard["best_action"] else "",
+        "Model": scorecard["model_name"],
+        "Scored At": scorecard["scored_at"],
+    })
+    buffer = io.StringIO()
+    pd.DataFrame([row]).to_csv(buffer, index=False)
+    payload = io.BytesIO(buffer.getvalue().encode("utf-8"))
+    payload.seek(0)
+    safe_id = re.sub(r"[^A-Za-z0-9_-]+", "-", scorecard["customer_id"])[:40] or "customer"
+    return send_file(
+        payload,
+        mimetype="text/csv",
+        as_attachment=True,
+        download_name=f"retainiq_scorecard_{safe_id}.csv",
+    )
+
+
+def _api_payload(record):
+    """The exact JSON body that reproduces this scoring call via /api/predict."""
+    payload = {}
+    for field in FORM_FIELDS:
+        name = field["name"]
+        if name not in record:
+            continue
+        value = record[name]
+        if name in ("MonthlyCharges", "TotalCharges"):
+            payload[name] = round(float(value), 2)
+        elif name in ("tenure", "SeniorCitizen"):
+            payload[name] = int(value)
+        else:
+            payload[name] = str(value)
+    return json.dumps(payload, indent=2)
 
 
 # ---------------------------------------------------------------------------

@@ -690,3 +690,115 @@ body:has(#ops-mode:checked) .ops-toggle::after { transform: translateX(18px); ba
 @media(max-width:1024px){.quick-action-grid{grid-template-columns:repeat(2,1fr)}.snapshot-grid{grid-template-columns:repeat(2,1fr)}.interactive-workflow{display:grid;grid-template-columns:1fr 1fr;gap:10px}.interactive-workflow>i{display:none}}
 @media(max-width:700px){.home-command-row,.home-command-box{align-items:stretch;flex-direction:column}.home-command-box button{min-width:0;width:100%}.shortcut-help{width:100%;height:38px}.snapshot-grid,.home-intelligence-grid{grid-template-columns:1fr}.quick-action-grid{grid-template-columns:1fr}.interactive-workflow{grid-template-columns:1fr}.snapshot-empty{align-items:flex-start;flex-wrap:wrap}.snapshot-empty .btn{width:100%;justify-content:center}.model-status-popover{width:min(310px,calc(100vw - 36px))}.activity-row{grid-template-columns:auto 1fr auto}.activity-row time{grid-column:2}.home-hero{padding-top:8px}}
 @media(prefers-reduced-motion:reduce){.signal-glow,.mini-risk-meter>div b{animation:none}.reveal-item{opacity:1;transform:none}.interactive-signal .bar{animation:none}}
+
+/* ============================================================
+   Single prediction — rebuilt form + scorecard
+   ============================================================ */
+.single-header{display:flex;justify-content:space-between;align-items:flex-end;gap:20px;flex-wrap:wrap}
+.single-header h1{margin-bottom:4px}
+.single-header p{margin:0;color:var(--muted);max-width:70ch}
+.single-header-side{display:flex;flex-direction:column;align-items:flex-end;gap:8px}
+.single-header-side small{color:var(--muted);font:.66rem var(--font-mono)}
+.single-header-side .btn+.btn{margin-top:2px}
+.single-header .engine-status i{width:7px;height:7px;border-radius:50%;background:var(--ok);box-shadow:0 0 0 4px color-mix(in srgb,var(--ok) 15%,transparent);animation:blink 2s infinite}
+.single-header .engine-status.offline{color:var(--bad)}
+.single-header .engine-status.offline i{background:var(--bad);animation:none}
+
+/* Example customer bar */
+.example-bar{display:flex;justify-content:space-between;align-items:center;gap:16px;flex-wrap:wrap;padding:14px 18px;margin-bottom:18px;border:1px solid var(--line);border-radius:var(--radius-md);background:var(--panel)}
+.example-copy strong{display:block;font-size:.78rem}
+.example-copy span{color:var(--muted);font-size:.7rem}
+.example-actions{display:flex;gap:8px;flex-wrap:wrap}
+.example-chip{padding:7px 14px;border:1px solid var(--line);border-radius:999px;color:var(--text);font:600 .68rem var(--font-body);background:var(--line-soft);transition:.15s}
+.example-chip:hover{text-decoration:none;border-color:var(--action);transform:translateY(-1px)}
+.example-chip.is-active{border-color:var(--action);background:var(--action-dim);color:var(--action)}
+.chip-high:hover{border-color:var(--bad)}
+.chip-low:hover{border-color:var(--ok)}
+
+/* Form polish */
+.single-form .req{color:var(--bad);font-size:.7rem}
+.field-hint{display:block;margin-top:5px;color:var(--muted);font-size:.62rem;line-height:1.4}
+.field-error{display:block;margin-top:5px;color:var(--bad);font:600 .62rem var(--font-body)}
+.form-group.has-error input,.form-group.has-error select{border-color:var(--bad);box-shadow:0 0 0 3px color-mix(in srgb,var(--bad) 14%,transparent)}
+
+/* Verdict strip */
+.verdict-strip{display:grid;grid-template-columns:auto auto 1fr;gap:26px;align-items:center;padding:22px 26px;margin-bottom:18px;border:1px solid var(--line);border-left-width:4px;border-radius:var(--radius-md);background:var(--panel);box-shadow:var(--shadow-panel)}
+.verdict-strip.risk-low{border-left-color:var(--ok)}
+.verdict-strip.risk-medium{border-left-color:var(--warn)}
+.verdict-strip.risk-high{border-left-color:var(--bad)}
+.verdict-score{text-align:center}
+.verdict-score .probability-display{margin-bottom:0}
+.verdict-score .muted{font:.62rem var(--font-mono);text-transform:uppercase;letter-spacing:.06em}
+.verdict-meta{display:flex;flex-direction:column;gap:9px;align-items:flex-start}
+.verdict-action{padding-left:22px;border-left:1px solid var(--line)}
+.verdict-action-label{color:var(--muted);font:.62rem var(--font-mono);text-transform:uppercase;letter-spacing:.06em}
+.verdict-action .primary-action{margin:6px 0 0}
+.verdict-action-note{margin:8px 0 0;color:var(--muted);font-size:.68rem}
+
+/* Scorecard layout */
+.scorecard-grid{display:grid;grid-template-columns:1.35fr 1fr;gap:18px;margin-bottom:24px}
+.scorecard-grid .card-head{margin-bottom:14px}
+.scorecard-grid .card-head p{margin:4px 0 0;font-size:.68rem;line-height:1.5}
+.scorecard-grid .result-card-title{margin-bottom:0}
+
+/* What-if simulator */
+.whatif-list{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:10px}
+.whatif-row{display:grid;grid-template-columns:1fr 240px;gap:16px;align-items:center;padding:12px 14px;border:1px solid var(--line);border-radius:var(--radius-sm);background:var(--line-soft)}
+.whatif-row.is-better{border-left:3px solid var(--ok)}
+.whatif-row.is-worse{border-left:3px solid var(--bad)}
+.whatif-row.is-flat{border-left:3px solid var(--line)}
+.whatif-row.is-projection{opacity:.85;border-style:dashed}
+.whatif-copy strong{display:block;font-size:.74rem}
+.whatif-copy small{display:block;margin-top:3px;color:var(--muted);font-size:.62rem;line-height:1.45}
+.whatif-bar{position:relative;height:8px;border-radius:8px;background:var(--line);overflow:hidden}
+.whatif-base{position:absolute;inset:0 auto 0 0;background:color-mix(in srgb,var(--muted) 45%,transparent)}
+.whatif-new{position:absolute;inset:0 auto 0 0;border-radius:8px}
+.whatif-new.risk-low{background:var(--ok)}
+.whatif-new.risk-medium{background:var(--warn)}
+.whatif-new.risk-high{background:var(--bad)}
+.whatif-values{display:flex;justify-content:space-between;align-items:baseline;gap:10px;margin-top:7px}
+.whatif-prob{font:.66rem var(--font-mono);color:var(--muted)}
+.whatif-prob strong{color:var(--text)}
+.whatif-delta{font:700 .66rem var(--font-mono)}
+.whatif-delta.delta-down{color:var(--ok)}
+.whatif-delta.delta-up{color:var(--bad)}
+.whatif-foot{margin:14px 0 0;font-size:.62rem}
+
+/* Signed driver bars */
+.driver-list{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:9px}
+.driver-row{display:grid;grid-template-columns:1fr 110px 54px;gap:10px;align-items:center}
+.driver-label{font-size:.7rem}
+.driver-track{height:8px;border-radius:8px;background:var(--line);overflow:hidden}
+.driver-fill{display:block;height:100%;border-radius:8px}
+.driver-risk .driver-fill{background:var(--bad)}
+.driver-protective .driver-fill{background:var(--ok)}
+.driver-value{text-align:right;font:600 .64rem var(--font-mono)}
+.driver-risk .driver-value{color:var(--bad)}
+.driver-protective .driver-value{color:var(--ok)}
+.driver-legend{display:flex;gap:16px;margin-top:14px;color:var(--muted);font-size:.62rem}
+.driver-legend .dot{display:inline-block;width:8px;height:8px;border-radius:50%;margin-right:6px}
+.dot-risk{background:var(--bad)}
+.dot-protective{background:var(--ok)}
+
+/* Model confidence + API block */
+.metric-chips{display:grid;grid-template-columns:repeat(2,1fr);gap:8px;margin-bottom:12px}
+.metric-chips div{padding:10px;border-radius:7px;background:var(--line-soft)}
+.metric-chips span{display:block;color:var(--muted);font-size:.58rem;text-transform:uppercase;letter-spacing:.05em}
+.metric-chips strong{font:600 .72rem var(--font-mono)}
+.small-note{font-size:.63rem;line-height:1.55}
+.api-block{margin-top:14px;border-top:1px solid var(--line);padding-top:12px}
+.api-block summary{cursor:pointer;font:600 .68rem var(--font-body);color:var(--action)}
+.code-block{margin:10px 0 0;padding:12px;border:1px solid var(--line);border-radius:var(--radius-sm);background:var(--ink);color:var(--text);font:.62rem var(--font-mono);white-space:pre-wrap;word-break:break-all;overflow-x:auto}
+
+@media(max-width:1024px){
+    .scorecard-grid{grid-template-columns:1fr}
+    .verdict-strip{grid-template-columns:1fr;gap:16px}
+    .verdict-action{padding-left:0;border-left:0;border-top:1px solid var(--line);padding-top:14px}
+    .verdict-meta{flex-direction:row;flex-wrap:wrap;align-items:center}
+}
+@media(max-width:700px){
+    .whatif-row{grid-template-columns:1fr}
+    .driver-row{grid-template-columns:1fr 70px 50px}
+    .single-header-side{align-items:flex-start;flex-direction:row;flex-wrap:wrap}
+    .example-bar{align-items:flex-start;flex-direction:column}
+}

@@ -261,6 +261,17 @@ def _record_from_row(row, cleaned_row, prob, extra=None):
         except (KeyError, IndexError):
             return default
 
+    def _as_float(value, default=0.0):
+        try:
+            return float(value)
+        except (TypeError, ValueError):
+            return default
+
+    def _as_int(value, default=0):
+        # Universal-engine rows can carry "0.0"-style strings, which int()
+        # rejects outright; go through float first.
+        return int(_as_float(value, default))
+
     risk = _get(row, "Risk Level", "Low Risk")
     m_charges = _get(row, "Monthly Charges", 0)
     c_id = _get(row, "Customer ID", "")
@@ -280,23 +291,23 @@ def _record_from_row(row, cleaned_row, prob, extra=None):
         recs = ["Monitor account."]
 
     record = {
-        "id": str(c_id), "probability_pct": float(prob_pct), "prediction": str(pred),
+        "id": str(c_id), "probability_pct": _as_float(prob_pct), "prediction": str(pred),
         "will_churn": str(pred) == "Likely to Churn", "risk_level": str(risk),
-        "risk_css": risk_css_class(str(risk)), "signal_bars": signal_strength(float(prob)),
-        "monthly_charges": float(m_charges), "tenure": int(tenure_val),
+        "risk_css": risk_css_class(str(risk)), "signal_bars": signal_strength(_as_float(prob)),
+        "monthly_charges": _as_float(m_charges), "tenure": _as_int(tenure_val),
         "contract": str(contract_val), "recommendations": recs, "primary_action": recs[0],
         "is_high": str(risk) == "High Risk", "is_mtm": str(contract_val) == "Month-to-month",
-        "is_high_bill": float(m_charges) >= 80,
+        "is_high_bill": _as_float(m_charges) >= 80,
         # Data attributes for dynamic filtering
         "data_risk": str(risk).lower().replace(" ", "-"),
         "data_prediction": str(pred).lower().replace(" ", "-"),
         "data_contract": str(contract_val).lower().replace(" ", "-"),
-        "data_charges": float(m_charges),
-        "data_tenure": int(tenure_val),
+        "data_charges": _as_float(m_charges),
+        "data_tenure": _as_int(tenure_val),
         "row_classes": " ".join(filter(None, [
             "is-high" if str(risk) == "High Risk" else "",
             "is-mtm" if str(contract_val) == "Month-to-month" else "",
-            "is-high-bill" if float(m_charges) >= 80 else "",
+            "is-high-bill" if _as_float(m_charges) >= 80 else "",
         ])),
     }
     if extra:

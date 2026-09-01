@@ -12,6 +12,9 @@ from sklearn.model_selection import train_test_split
 from sklearn.metrics import accuracy_score, f1_score, precision_score, recall_score, roc_auc_score
 from sklearn.preprocessing import LabelEncoder
 
+# Shared risk bands so single, bulk and universal scoring agree on labels.
+from utils.prediction import calculate_risk_level
+
 logger = logging.getLogger("retainiq")
 
 CHURN_TARGET_PATTERNS = [
@@ -441,7 +444,7 @@ def run_universal_churn(file_storage):
                 feature_importances /= total_imp
 
             predictions = (probabilities >= 0.5).astype(int)
-            risk_levels = ['High Risk' if p >= 0.7 else 'Medium Risk' if p >= 0.4 else 'Low Risk' for p in probabilities]
+            risk_levels = [calculate_risk_level(p) for p in probabilities]
             metrics = {'accuracy': None, 'precision': None, 'recall': None, 'f1': None, 'roc_auc': None,
                        'note': 'Heuristic scoring (no labeled target column found)'}
 
@@ -539,14 +542,7 @@ def run_universal_churn(file_storage):
         feature_importances = model.feature_importances_
         probabilities = model.predict_proba(X)[:, 1]
         predictions = model.predict(X)
-        risk_levels = []
-        for prob in probabilities:
-            if prob >= 0.7:
-                risk_levels.append('High Risk')
-            elif prob >= 0.4:
-                risk_levels.append('Medium Risk')
-            else:
-                risk_levels.append('Low Risk')
+        risk_levels = [calculate_risk_level(prob) for prob in probabilities]
         results_df = df.copy()
         results_df['Churn Probability'] = np.round(probabilities * 100, 1)
         results_df['Churn_Probability'] = np.round(probabilities, 4)
