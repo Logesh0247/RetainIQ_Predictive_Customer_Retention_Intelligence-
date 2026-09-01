@@ -743,16 +743,12 @@ def reports():
             fpath = os.path.join(folder, fname)
         try:
             size_kb = round(os.path.getsize(fpath) / 1024, 1)
-            modified = datetime.fromtimestamp(os.path.getmtime(fpath)).strftime(
-                "%d %b %Y, %I:%M %p"
-            )
             with open(fpath, encoding="utf-8") as f:
                 row_count = max(sum(1 for _ in f) - 1, 0)
             cache_path = os.path.join(folder, f".cache_{run_id}.pkl")
             report_files.append({
                 "filename": fname,
                 "size_kb": size_kb,
-                "modified": modified,
                 "row_count": row_count,
                 "dashboard_available": os.path.exists(cache_path),
                 "run_id": run_id,
