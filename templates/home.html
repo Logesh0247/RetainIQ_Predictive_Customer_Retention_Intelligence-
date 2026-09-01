@@ -60,7 +60,7 @@
 <section class="home-quick-actions reveal-item">
     <div class="section-eyebrow">QUICK ACTIONS</div>
     <div class="quick-action-grid">
-        <a href="{{ url_for('retention_planner') }}"><span>+</span><div><strong>Plan Retention</strong><small>Simulate a campaign and its ROI</small></div><b>→</b><kbd>P</kbd></a>
+        <a href="{{ url_for('reports') }}"><span>+</span><div><strong>Open Reports</strong><small>Revisit an earlier scored run</small></div><b>→</b><kbd>R</kbd></a>
         <a href="{{ url_for('bulk_prediction') }}"><span>⇧</span><div><strong>Bulk Score Customers</strong><small>Upload a customer portfolio</small></div><b>→</b><kbd>B</kbd></a>
         <a href="{{ url_for('prediction_dashboard') }}"><span>◎</span><div><strong>Open Dashboard</strong><small>Explore retention intelligence</small></div><b>→</b><kbd>D</kbd></a>
         <a href="{{ url_for('reports') }}"><span>▣</span><div><strong>View Reports</strong><small>Review previous outputs</small></div><b>→</b><kbd>R</kbd></a>
@@ -73,7 +73,7 @@
         <a class="feature-card interactive-feature" href="{{ url_for('bulk_prediction') }}"><div class="feature-icon">01</div><h3>AI Churn Prediction</h3><p>Score an entire customer portfolio in seconds using the trained machine learning model.</p><span>Score a dataset →</span></a>
         <a class="feature-card interactive-feature" href="{{ url_for('prediction_dashboard') }}"><div class="feature-icon">02</div><h3>Risk Analysis</h3><p>Translate model probability into clear low, medium, and high operational risk.</p><span>Explore risk →</span></a>
         <a class="feature-card interactive-feature" href="{{ url_for('bulk_prediction') }}"><div class="feature-icon">03</div><h3>Bulk Prediction</h3><p>Upload a CSV customer portfolio and score it with one consistent pipeline.</p><span>Score customers →</span></a>
-        <a class="feature-card interactive-feature" href="{{ url_for('retention_planner') }}"><div class="feature-icon">04</div><h3>Retention Planner</h3><p>Simulate retention campaigns on any segment and see the cost, revenue protected and ROI.</p><span>Plan a campaign →</span></a>
+        <a class="feature-card interactive-feature" href="{{ url_for('prediction_dashboard') }}"><div class="feature-icon">04</div><h3>Retention Recommendations</h3><p>Every scored customer comes with an explainable next-best action driven by their own risk factors.</p><span>See the actions →</span></a>
         <a class="feature-card interactive-feature" href="{{ url_for('prediction_dashboard') }}"><div class="feature-icon">05</div><h3>Executive Dashboard</h3><p>Track churn KPIs, risk distribution, and estimated revenue exposure.</p><span>Open dashboard →</span></a>
         <a class="feature-card interactive-feature" href="{{ url_for('reports') }}"><div class="feature-icon">06</div><h3>Business Intelligence</h3><p>Reopen and download private prediction reports from previous scoring runs.</p><span>View reports →</span></a>
     </div>
@@ -94,8 +94,8 @@
         <header><div><span class="section-eyebrow">MODEL INTELLIGENCE</span><h2>Powered by Machine Learning</h2></div><span class="live-pill">{{ 'READY' if model_ready else 'OFFLINE' }}</span></header>
         <dl><div><dt>Model</dt><dd>{{ model_name or 'Unavailable' }}</dd></div><div><dt>Task</dt><dd>Binary Classification</dd></div><div><dt>Output</dt><dd>Churn Probability</dd></div><div><dt>Explainability</dt><dd>{{ 'Feature Contributions' if explainability_ready else 'Unavailable' }}</dd></div></dl>
     </article>
-    <a class="mini-risk-meter" href="{{ url_for('retention_planner') }}">
-        <span class="section-eyebrow">RETENTION ROI</span><h2>Turn risk into a funded plan</h2><div><small>LOW</small><i><b></b></i><small>HIGH</small></div><p>Choose a segment, pick the levers you can fund, and see churners avoided, revenue protected and campaign ROI.</p><strong>Open Retention Planner →</strong>
+    <a class="mini-risk-meter" href="{{ url_for('prediction_dashboard') }}">
+        <span class="section-eyebrow">CUSTOMER RISK METER</span><h2>Explore customer-level risk</h2><div><small>LOW</small><i><b></b></i><small>HIGH</small></div><p>Break the scored portfolio down by risk band, contract and revenue, and drill into any single customer.</p><strong>Open Prediction Dashboard →</strong>
     </a>
 </section>
 
@@ -112,7 +112,6 @@
     <div class="command-dialog" role="dialog" aria-modal="true" aria-labelledby="command-title">
         <label id="command-title"><span>⌕</span><input id="command-input" type="search" placeholder="Search RetainIQ…" autocomplete="off"><kbd>ESC</kbd></label>
         <div id="command-results" role="listbox">
-            <a href="{{ url_for('retention_planner') }}" data-search="retention planner campaign roi simulation"><span>P</span><div><strong>Retention Planner</strong><small>Simulate a campaign and its ROI</small></div><b>→</b></a>
             <a href="{{ url_for('bulk_prediction') }}" data-search="bulk score upload customers"><span>B</span><div><strong>Bulk Customer Scoring</strong><small>Analyze a CSV portfolio</small></div><b>→</b></a>
             <a href="{{ url_for('prediction_dashboard') }}" data-search="dashboard analytics risk"><span>D</span><div><strong>Prediction Dashboard</strong><small>Open retention intelligence</small></div><b>→</b></a>
             <a href="{{ url_for('reports') }}" data-search="reports history download"><span>R</span><div><strong>Reports</strong><small>Review previous outputs</small></div><b>→</b></a>
@@ -121,7 +120,7 @@
     </div>
 </div>
 
-<div class="shortcuts-overlay" id="shortcuts-overlay" hidden><div class="shortcuts-dialog" role="dialog" aria-modal="true"><header><div><span class="section-eyebrow">KEYBOARD SHORTCUTS</span><h2>Move around RetainIQ</h2></div><button id="shortcuts-close" aria-label="Close">×</button></header><dl><div><dt>P</dt><dd>Retention Planner</dd></div><div><dt>B</dt><dd>Bulk Prediction</dd></div><div><dt>D</dt><dd>Prediction Dashboard</dd></div><div><dt>R</dt><dd>Reports</dd></div><div><dt>H</dt><dd>Home</dd></div><div><dt>Ctrl K</dt><dd>Command palette</dd></div></dl></div></div>
+<div class="shortcuts-overlay" id="shortcuts-overlay" hidden><div class="shortcuts-dialog" role="dialog" aria-modal="true"><header><div><span class="section-eyebrow">KEYBOARD SHORTCUTS</span><h2>Move around RetainIQ</h2></div><button id="shortcuts-close" aria-label="Close">×</button></header><dl><div><dt>B</dt><dd>Bulk Prediction</dd></div><div><dt>D</dt><dd>Prediction Dashboard</dd></div><div><dt>R</dt><dd>Reports</dd></div><div><dt>H</dt><dd>Home</dd></div><div><dt>Ctrl K</dt><dd>Command palette</dd></div></dl></div></div>
 
 <script>
 (() => {
@@ -157,7 +156,7 @@
         if(typing)return;
         const key=event.key.toLowerCase();
         if(key==='?'){event.preventDefault();openShortcuts();return}
-        const routes={p:'{{ url_for("retention_planner") }}',b:'{{ url_for("bulk_prediction") }}',d:'{{ url_for("prediction_dashboard") }}',r:'{{ url_for("reports") }}',h:'{{ url_for("home") }}'};
+        const routes={b:'{{ url_for("bulk_prediction") }}',d:'{{ url_for("prediction_dashboard") }}',r:'{{ url_for("reports") }}',h:'{{ url_for("home") }}'};
         if(routes[key]) window.location.href=routes[key];
     });
 

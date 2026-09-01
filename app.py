@@ -22,10 +22,6 @@ from utils.prediction import (
     predict_customer, is_model_available, ModelLoadError, load_model,
     MODEL_COMPARISON,
 )
-from utils.retention_planner import (
-    simulate_campaign, RetentionPlannerError, LEVERS, LEVERS_BY_ID,
-    DEFAULT_LEVERS, RISK_CHOICES, CONTRACT_CHOICES, TENURE_CHOICES,
-)
 from utils.bulk_prediction import (
     run_bulk_prediction,
     run_sample_prediction,
@@ -86,17 +82,6 @@ app.config["REPORTS_FOLDER"] = REPORTS_DIR
 logging.basicConfig(level=logging.INFO)
 
 logger = logging.getLogger("retainiq")
-
-
-@app.template_filter("money")
-def _money(value, decimals=0):
-    """Currency formatting that puts the sign before the symbol (-$170)."""
-    try:
-        amount = float(value)
-    except (TypeError, ValueError):
-        return "$0"
-    sign = "-" if amount < 0 else ""
-    return f"{sign}${abs(amount):,.{int(decimals)}f}"
 
 
 # ---------------------------------------------------------------------------
@@ -306,116 +291,15 @@ def home():
 # Single prediction
 # ---------------------------------------------------------------------------
 
-def _planner_params():
-    """Read campaign settings from the query string (shareable URLs)."""
-    levers = request.args.getlist("lever")
-    if not levers and "lever" not in request.args:
-        levers = list(DEFAULT_LEVERS)
-    risk = request.args.get("risk", "High Risk")
-    if risk not in RISK_CHOICES:
-        risk = "High Risk"
-    contract = request.args.get("contract", "All")
-    if contract not in CONTRACT_CHOICES:
-        contract = "All"
-    tenure = request.args.get("tenure", "all")
-    if tenure not in [value for value, _ in TENURE_CHOICES]:
-        tenure = "all"
-    try:
-        min_spend = max(0.0, float(request.args.get("min_spend") or 0))
-    except ValueError:
-        min_spend = 0.0
-    return {
-        "levers": [lever for lever in levers if lever in LEVERS_BY_ID],
-        "risk": risk,
-        "contract": contract,
-        "tenure": tenure,
-        "min_spend": min_spend,
-    }
-
-
-@app.route("/retention-planner")
-def retention_planner():
-    """Turn a scored portfolio into a costed retention campaign."""
-    bundle, download_filename, run_id = _load_run_bundle()
-    params = _planner_params()
-
-    context = {
-        "levers": LEVERS,
-        "risk_choices": RISK_CHOICES,
-        "contract_choices": CONTRACT_CHOICES,
-        "tenure_choices": TENURE_CHOICES,
-        "params": params,
-        "run_id": run_id,
-        "model_ready": is_model_available(),
-    }
-
-    if bundle is None:
-        return render_template("retention_planner.html", plan=None, no_run=True, **context)
-
-    try:
-        plan = simulate_campaign(
-            bundle,
-            params["levers"],
-            risk=params["risk"],
-            contract=params["contract"],
-            tenure=params["tenure"],
-            min_spend=params["min_spend"],
-        )
-    except RetentionPlannerError as exc:
-        flash(str(exc), "error")
-        return render_template("retention_planner.html", plan=None, no_run=False, **context)
-    except Exception:
-        logger.exception("Retention planner simulation failed")
-        flash("The campaign could not be simulated. Try a different segment.", "error")
-        return render_template("retention_planner.html", plan=None, no_run=False, **context)
-
-    return render_template("retention_planner.html", plan=plan, no_run=False, **context)
-
-
-@app.route("/retention-planner/download")
-def download_retention_plan():
-    bundle, _, run_id = _load_run_bundle()
-    if bundle is None:
-        abort(404)
-    params = _planner_params()
-    try:
-        plan = simulate_campaign(
-            bundle,
-            params["levers"],
-            risk=params["risk"],
-            contract=params["contract"],
-            tenure=params["tenure"],
-            min_spend=params["min_spend"],
-            top_n=0,
-        )
-    except RetentionPlannerError:
-        abort(404)
-    detail = plan.get("detail_df")
-    if detail is None or detail.empty:
-        abort(404)
-    detail = detail.copy()
-    detail.insert(1, "Campaign Levers", ", ".join(
-        LEVERS_BY_ID[lever]["label"] for lever in params["levers"]
-    ))
-    buffer = io.StringIO()
-    detail.to_csv(buffer, index=False)
-    payload = io.BytesIO(buffer.getvalue().encode("utf-8"))
-    payload.seek(0)
-    stamp = run_id or datetime.now().strftime("%Y%m%d_%H%M%S")
-    return send_file(
-        payload,
-        mimetype="text/csv",
-        as_attachment=True,
-        download_name=f"retainiq_retention_plan_{stamp}.csv",
-    )
-
-
-# The Single Prediction page was replaced by the Retention Planner; keep old
-# links, bookmarks and screenshots working instead of 404ing.
+# Retired pages. The Single Prediction form and the Retention Planner were
+# removed from the product; keep their URLs alive so old links, bookmarks and
+# screenshots land somewhere useful instead of a 404.
 @app.route("/single-prediction")
 @app.route("/single-prediction/<path:_ignored>")
-def single_prediction_moved(_ignored=None):
-    return redirect(url_for("retention_planner"))
+@app.route("/retention-planner")
+@app.route("/retention-planner/<path:_ignored>")
+def retired_page(_ignored=None):
+    return redirect(url_for("home"))
 
 
 # ---------------------------------------------------------------------------

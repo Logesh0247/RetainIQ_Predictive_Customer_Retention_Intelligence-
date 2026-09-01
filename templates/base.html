@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>{% block title %}RetainIQ{% endblock %} | RetainIQ</title>
-<link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}?v=planner13">
+<link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}?v=core14">
 </head>
 <body>
 
@@ -31,7 +31,6 @@
         {% set active_run = request.args.get('run', '') %}
         <nav class="sidebar-nav">
             <a href="{{ url_for('home', run=active_run) if active_run else url_for('home') }}" class="{{ 'active' if request.endpoint == 'home' }}"><span class="nav-dot"></span>Home</a>
-            <a href="{{ url_for('retention_planner', run=active_run) if active_run else url_for('retention_planner') }}" class="{{ 'active' if request.endpoint == 'retention_planner' }}"><span class="nav-dot"></span>Retention Planner</a>
             <a href="{{ url_for('bulk_prediction', run=active_run) if active_run else url_for('bulk_prediction') }}" class="{{ 'active' if request.endpoint in ('bulk_prediction', 'bulk_results_view') }}"><span class="nav-dot"></span>Bulk Prediction</a>
             <a href="{{ url_for('prediction_dashboard', run=active_run) if active_run else url_for('prediction_dashboard') }}" class="{{ 'active' if request.endpoint == 'prediction_dashboard' }}"><span class="nav-dot"></span>Prediction Dashboard</a>
             <a href="{{ url_for('reports', run=active_run) if active_run else url_for('reports') }}" class="{{ 'active' if request.endpoint == 'reports' }}"><span class="nav-dot"></span>Reports</a>
