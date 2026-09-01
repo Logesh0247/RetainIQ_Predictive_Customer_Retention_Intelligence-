@@ -6,6 +6,8 @@ import os
 import io
 import pickle
 import logging
+import tempfile
+from collections import OrderedDict
 import numpy as np
 import pandas as pd
 
@@ -30,10 +32,45 @@ MAX_ROWS = 20000
 TOP_N_WITH_DRIVERS = 10
 MAX_DISPLAY_ROWS = 150
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-REPORTS_DIR = str(PATHS_REPORTS)
-UPLOADS_DIR = os.path.join(BASE_DIR, "uploads")
-os.makedirs(REPORTS_DIR, exist_ok=True)
-os.makedirs(UPLOADS_DIR, exist_ok=True)
+
+
+def _writable_dir(preferred, fallback_name):
+    """Return a directory we can actually write to.
+
+    Managed hosts (Render, Fly, App Runner, containers with a read-only
+    layer, ...) may not allow writes next to the source tree. Falling back to
+    a temp directory keeps the app booting instead of crashing on import,
+    which is the classic "works locally, 500s after deploy" failure.
+    """
+    candidates = [preferred]
+    env_root = os.environ.get("RETAINIQ_DATA_DIR")
+    if env_root:
+        candidates.insert(0, os.path.join(env_root, fallback_name))
+    candidates.append(os.path.join(tempfile.gettempdir(), "retainiq", fallback_name))
+    for candidate in candidates:
+        try:
+            os.makedirs(candidate, exist_ok=True)
+            probe = os.path.join(candidate, ".write_test")
+            with open(probe, "w", encoding="utf-8") as handle:
+                handle.write("ok")
+            os.remove(probe)
+            return candidate
+        except Exception as exc:  # pragma: no cover - platform dependent
+            logging.getLogger("retainiq").warning(
+                "Directory %s is not writable (%s); trying next location.", candidate, exc
+            )
+    return tempfile.mkdtemp(prefix=f"retainiq_{fallback_name}_")
+
+
+REPORTS_DIR = _writable_dir(str(PATHS_REPORTS), "reports")
+UPLOADS_DIR = _writable_dir(os.path.join(BASE_DIR, "uploads"), "uploads")
+
+# Keeps the most recent scored runs in RAM as well as on disk. On hosts with an
+# ephemeral or per-request filesystem the disk copy can vanish between
+# requests; the memory copy keeps the dashboard/download links alive for as
+# long as the worker is up.
+_BUNDLE_MEMORY_CACHE = OrderedDict()
+_BUNDLE_MEMORY_LIMIT = 3
 
 
 class BulkPredictionError(ValueError):
@@ -224,6 +261,17 @@ def _record_from_row(row, cleaned_row, prob, extra=None):
         except (KeyError, IndexError):
             return default
 
+    def _as_float(value, default=0.0):
+        try:
+            return float(value)
+        except (TypeError, ValueError):
+            return default
+
+    def _as_int(value, default=0):
+        # Universal-engine rows can carry "0.0"-style strings, which int()
+        # rejects outright; go through float first.
+        return int(_as_float(value, default))
+
     risk = _get(row, "Risk Level", "Low Risk")
     m_charges = _get(row, "Monthly Charges", 0)
     c_id = _get(row, "Customer ID", "")
@@ -243,23 +291,23 @@ def _record_from_row(row, cleaned_row, prob, extra=None):
         recs = ["Monitor account."]
 
     record = {
-        "id": str(c_id), "probability_pct": float(prob_pct), "prediction": str(pred),
+        "id": str(c_id), "probability_pct": _as_float(prob_pct), "prediction": str(pred),
         "will_churn": str(pred) == "Likely to Churn", "risk_level": str(risk),
-        "risk_css": risk_css_class(str(risk)), "signal_bars": signal_strength(float(prob)),
-        "monthly_charges": float(m_charges), "tenure": int(tenure_val),
+        "risk_css": risk_css_class(str(risk)), "signal_bars": signal_strength(_as_float(prob)),
+        "monthly_charges": _as_float(m_charges), "tenure": _as_int(tenure_val),
         "contract": str(contract_val), "recommendations": recs, "primary_action": recs[0],
         "is_high": str(risk) == "High Risk", "is_mtm": str(contract_val) == "Month-to-month",
-        "is_high_bill": float(m_charges) >= 80,
+        "is_high_bill": _as_float(m_charges) >= 80,
         # Data attributes for dynamic filtering
         "data_risk": str(risk).lower().replace(" ", "-"),
         "data_prediction": str(pred).lower().replace(" ", "-"),
         "data_contract": str(contract_val).lower().replace(" ", "-"),
-        "data_charges": float(m_charges),
-        "data_tenure": int(tenure_val),
+        "data_charges": _as_float(m_charges),
+        "data_tenure": _as_int(tenure_val),
         "row_classes": " ".join(filter(None, [
             "is-high" if str(risk) == "High Risk" else "",
             "is-mtm" if str(contract_val) == "Month-to-month" else "",
-            "is-high-bill" if float(m_charges) >= 80 else "",
+            "is-high-bill" if _as_float(m_charges) >= 80 else "",
         ])),
     }
     if extra:
@@ -516,28 +564,60 @@ def build_customer_detail(bundle, customer_id):
 
 def save_results_csv(results_df, filename, directory=None):
     directory = directory or REPORTS_DIR
-    os.makedirs(directory, exist_ok=True)
-    path = os.path.join(directory, filename)
-    results_df.to_csv(path, index=False)
-    return path
+    try:
+        os.makedirs(directory, exist_ok=True)
+        path = os.path.join(directory, filename)
+        results_df.to_csv(path, index=False)
+        return path
+    except OSError as exc:
+        # Read-only or full filesystem: keep serving the results from memory
+        # instead of failing the whole prediction.
+        logger.warning("Could not write results CSV to %s: %s", directory, exc)
+        return os.path.join(directory, filename)
+
+
+def _remember_bundle(cache_key, bundle):
+    _BUNDLE_MEMORY_CACHE[cache_key] = bundle
+    _BUNDLE_MEMORY_CACHE.move_to_end(cache_key)
+    while len(_BUNDLE_MEMORY_CACHE) > _BUNDLE_MEMORY_LIMIT:
+        _BUNDLE_MEMORY_CACHE.popitem(last=False)
 
 
 def save_bundle_cache(bundle, cache_key, directory=None):
     directory = directory or REPORTS_DIR
-    os.makedirs(directory, exist_ok=True)
     path = os.path.join(directory, f".cache_{cache_key}.pkl")
-    with open(path, "wb") as handle:
-        pickle.dump(bundle, handle)
+    _remember_bundle(cache_key, bundle)
+    try:
+        os.makedirs(directory, exist_ok=True)
+        with open(path, "wb") as handle:
+            pickle.dump(bundle, handle, protocol=pickle.HIGHEST_PROTOCOL)
+    except Exception as exc:
+        logger.warning("Could not persist bundle cache to %s: %s", path, exc)
     return path
 
 
+def _cache_key_from_path(path):
+    name = os.path.basename(path or "")
+    if name.startswith(".cache_") and name.endswith(".pkl"):
+        return name[len(".cache_"):-len(".pkl")]
+    return name
+
+
 def load_bundle_cache(path):
-    if not path or not os.path.exists(path):
-        return None
-    try:
-        with open(path, "rb") as handle:
-            return pickle.load(handle)
-    except Exception as exc:
-        logger.warning("Could not load cache: %s", exc)
-        return None
+    """Load a scored run: disk first, then the in-process memory cache."""
+    cache_key = _cache_key_from_path(path)
+    if path and os.path.exists(path):
+        try:
+            with open(path, "rb") as handle:
+                bundle = pickle.load(handle)
+            if cache_key:
+                _remember_bundle(cache_key, bundle)
+            return bundle
+        except Exception as exc:
+            logger.warning("Could not load cache: %s", exc)
+    if cache_key and cache_key in _BUNDLE_MEMORY_CACHE:
+        logger.info("Serving run %s from the in-memory cache.", cache_key)
+        _BUNDLE_MEMORY_CACHE.move_to_end(cache_key)
+        return _BUNDLE_MEMORY_CACHE[cache_key]
+    return None
 

@@ -4,6 +4,7 @@ app.py
 RetainIQ -- Customer Churn Prediction & Retention Intelligence Platform.
 """
 
+import io
 import os
 import re
 import secrets
@@ -36,6 +37,7 @@ from utils.bulk_prediction import (
     BulkPredictionError,
     MAX_DISPLAY_ROWS,
     REPORTS_DIR,
+    UPLOADS_DIR,
 )
 from utils.recommendation import generate_recommendation
 from utils.universal_churn import run_universal_churn, UniversalChurnError
@@ -44,158 +46,6 @@ from utils.universal_churn import run_universal_churn, UniversalChurnError
 # ---------------------------------------------------------------------------
 # Single prediction form fields
 # ---------------------------------------------------------------------------
-
-FORM_FIELDS = [
-    {
-        "name": "customerID",
-        "label": "Customer ID",
-        "type": "text",
-        "required": False,
-        "placeholder": "e.g. 7590-VHVEG",
-    },
-    {
-        "name": "gender",
-        "label": "Gender",
-        "type": "select",
-        "options": ["Female", "Male"],
-        "required": True,
-    },
-    {
-        "name": "SeniorCitizen",
-        "label": "Senior Citizen",
-        "type": "select",
-        "options": ["0", "1"],
-        "required": True,
-    },
-    {
-        "name": "Partner",
-        "label": "Partner",
-        "type": "select",
-        "options": ["Yes", "No"],
-        "required": True,
-    },
-    {
-        "name": "Dependents",
-        "label": "Dependents",
-        "type": "select",
-        "options": ["Yes", "No"],
-        "required": True,
-    },
-    {
-        "name": "tenure",
-        "label": "Tenure (Months)",
-        "type": "number",
-        "required": True,
-        "min": 0,
-        "max": 100,
-    },
-    {
-        "name": "PhoneService",
-        "label": "Phone Service",
-        "type": "select",
-        "options": ["Yes", "No"],
-        "required": True,
-    },
-    {
-        "name": "MultipleLines",
-        "label": "Multiple Lines",
-        "type": "select",
-        "options": ["Yes", "No", "No phone service"],
-        "required": True,
-    },
-    {
-        "name": "InternetService",
-        "label": "Internet Service",
-        "type": "select",
-        "options": ["DSL", "Fiber optic", "No"],
-        "required": True,
-    },
-    {
-        "name": "OnlineSecurity",
-        "label": "Online Security",
-        "type": "select",
-        "options": ["Yes", "No", "No internet service"],
-        "required": True,
-    },
-    {
-        "name": "OnlineBackup",
-        "label": "Online Backup",
-        "type": "select",
-        "options": ["Yes", "No", "No internet service"],
-        "required": True,
-    },
-    {
-        "name": "DeviceProtection",
-        "label": "Device Protection",
-        "type": "select",
-        "options": ["Yes", "No", "No internet service"],
-        "required": True,
-    },
-    {
-        "name": "TechSupport",
-        "label": "Tech Support",
-        "type": "select",
-        "options": ["Yes", "No", "No internet service"],
-        "required": True,
-    },
-    {
-        "name": "StreamingTV",
-        "label": "Streaming TV",
-        "type": "select",
-        "options": ["Yes", "No", "No internet service"],
-        "required": True,
-    },
-    {
-        "name": "StreamingMovies",
-        "label": "Streaming Movies",
-        "type": "select",
-        "options": ["Yes", "No", "No internet service"],
-        "required": True,
-    },
-    {
-        "name": "Contract",
-        "label": "Contract",
-        "type": "select",
-        "options": ["Month-to-month", "One year", "Two year"],
-        "required": True,
-    },
-    {
-        "name": "PaperlessBilling",
-        "label": "Paperless Billing",
-        "type": "select",
-        "options": ["Yes", "No"],
-        "required": True,
-    },
-    {
-        "name": "PaymentMethod",
-        "label": "Payment Method",
-        "type": "select",
-        "options": [
-            "Electronic check",
-            "Mailed check",
-            "Bank transfer (automatic)",
-            "Credit card (automatic)",
-        ],
-        "required": True,
-    },
-    {
-        "name": "MonthlyCharges",
-        "label": "Monthly Charges",
-        "type": "number",
-        "required": True,
-        "step": "0.01",
-        "min": 0,
-    },
-    {
-        "name": "TotalCharges",
-        "label": "Total Charges",
-        "type": "number",
-        "required": False,
-        "step": "0.01",
-        "min": 0,
-    },
-]
-
 
 # ---------------------------------------------------------------------------
 # App configuration
@@ -223,22 +73,11 @@ RUNS_COOKIE = "retainiq_runs"
 VISITOR_ID_RE = re.compile(r"^[A-Za-z0-9_-]{16,64}$")
 RUN_ID_RE = re.compile(r"^[0-9]{8}_[0-9]{6}_[0-9a-f]{16}$")
 
-app.config["UPLOAD_FOLDER"] = os.path.join(
-    BASE_DIR,
-    "uploads"
-)
-
+# UPLOADS_DIR / REPORTS_DIR already resolve to a writable location (they fall
+# back to a temp directory on hosts with a read-only application filesystem),
+# so the app boots even where it cannot write next to the source code.
+app.config["UPLOAD_FOLDER"] = UPLOADS_DIR
 app.config["REPORTS_FOLDER"] = REPORTS_DIR
-
-os.makedirs(
-    app.config["UPLOAD_FOLDER"],
-    exist_ok=True
-)
-
-os.makedirs(
-    app.config["REPORTS_FOLDER"],
-    exist_ok=True
-)
 
 logging.basicConfig(level=logging.INFO)
 
@@ -382,10 +221,13 @@ def _owns_report(filename):
 
 
 def _bundle_from_run(run_id):
-    folder = _run_folder(run_id)
-    if not folder:
+    if not run_id or not RUN_ID_RE.match(str(run_id)):
         return None, None, None
-    bundle = load_bundle_cache(os.path.join(folder, f".cache_{run_id}.pkl"))
+    folder = _run_folder(run_id) or os.path.join(_runs_root(), run_id)
+    # When the folder is gone (ephemeral disk on a hosted instance, restart,
+    # scale event) load_bundle_cache still falls back to the in-memory cache.
+    cache_path = os.path.join(folder, f".cache_{run_id}.pkl")
+    bundle = load_bundle_cache(cache_path)
     if bundle is None:
         return None, None, None
     return bundle, _csv_name(run_id), run_id
@@ -449,68 +291,15 @@ def home():
 # Single prediction
 # ---------------------------------------------------------------------------
 
-@app.route("/single-prediction", methods=["GET", "POST"])
-def single_prediction():
-
-    if request.method == "GET":
-
-        return render_template(
-            "single_prediction.html",
-            fields=FORM_FIELDS,
-            form_data={},
-            errors=None
-        )
-
-    form_data = request.form.to_dict()
-
-    try:
-
-        result = predict_customer(form_data)
-
-        recommendations = generate_recommendation(
-            result["cleaned_record"],
-            result["probability"],
-            result["risk_level"]
-        )
-
-        return render_template(
-            "single_result.html",
-            customer=result["cleaned_record"],
-            probability_pct=result["probability_pct"],
-            prediction_label=result["prediction_label"],
-            will_churn=result["will_churn"],
-            risk_level=result["risk_level"],
-            risk_css=result["risk_css"],
-            signal_bars=result["signal_bars"],
-            recommendations=recommendations,
-            primary_action=recommendations[0] if recommendations else "Monitor account.",
-            top_drivers=result["top_drivers"],
-            model_name=result["model_name"],
-            form_data=form_data,
-            fields=FORM_FIELDS,
-        )
-
-    except PreprocessingError as exc:
-
-        flash(str(exc), "error")
-
-        return render_template(
-            "single_prediction.html",
-            fields=FORM_FIELDS,
-            form_data=form_data,
-            errors=str(exc)
-        )
-
-    except ModelLoadError as exc:
-
-        flash(str(exc), "error")
-
-        return render_template(
-            "single_prediction.html",
-            fields=FORM_FIELDS,
-            form_data=form_data,
-            errors=str(exc)
-        )
+# Retired pages. The Single Prediction form and the Retention Planner were
+# removed from the product; keep their URLs alive so old links, bookmarks and
+# screenshots land somewhere useful instead of a 404.
+@app.route("/single-prediction")
+@app.route("/single-prediction/<path:_ignored>")
+@app.route("/retention-planner")
+@app.route("/retention-planner/<path:_ignored>")
+def retired_page(_ignored=None):
+    return redirect(url_for("home"))
 
 
 # ---------------------------------------------------------------------------
@@ -791,21 +580,33 @@ def download_results(filename):
     filename = os.path.basename(filename)
     run_id = (request.args.get("run") or "").strip() or _run_id_from_filename(filename)
     folder = _run_folder(run_id)
-    if not folder:
-        abort(404)
 
-    safe_path = os.path.join(folder, filename)
-    if not os.path.isfile(safe_path):
-        csvs = [name for name in os.listdir(folder) if name.lower().endswith(".csv")]
-        if not csvs:
-            abort(404)
-        filename = csvs[0]
+    if folder:
         safe_path = os.path.join(folder, filename)
+        if os.path.isfile(safe_path):
+            return send_file(safe_path, as_attachment=True, download_name=filename)
+        csvs = [name for name in os.listdir(folder) if name.lower().endswith(".csv")]
+        if csvs:
+            filename = csvs[0]
+            return send_file(
+                os.path.join(folder, filename),
+                as_attachment=True,
+                download_name=filename,
+            )
 
+    # Disk copy is gone (restart / ephemeral filesystem): rebuild the CSV from
+    # the cached run instead of returning a 404 the user cannot recover from.
+    bundle, csv_name, resolved_run = _bundle_from_run(run_id)
+    if bundle is None:
+        abort(404)
+    buffer = io.BytesIO()
+    bundle["results_df"].to_csv(buffer, index=False)
+    buffer.seek(0)
     return send_file(
-        safe_path,
+        buffer,
+        mimetype="text/csv",
         as_attachment=True,
-        download_name=filename
+        download_name=csv_name or filename,
     )
 
 
@@ -942,16 +743,12 @@ def reports():
             fpath = os.path.join(folder, fname)
         try:
             size_kb = round(os.path.getsize(fpath) / 1024, 1)
-            modified = datetime.fromtimestamp(os.path.getmtime(fpath)).strftime(
-                "%d %b %Y, %I:%M %p"
-            )
             with open(fpath, encoding="utf-8") as f:
                 row_count = max(sum(1 for _ in f) - 1, 0)
             cache_path = os.path.join(folder, f".cache_{run_id}.pkl")
             report_files.append({
                 "filename": fname,
                 "size_kb": size_kb,
-                "modified": modified,
                 "row_count": row_count,
                 "dashboard_available": os.path.exists(cache_path),
                 "run_id": run_id,

@@ -66,10 +66,17 @@ def is_model_available():
     return load_model() is not None
 
 
+# Single source of truth for the risk bands. Every scoring path (single,
+# bulk Telco, universal engine) imports this so the same customer never gets
+# two different risk labels in two different screens.
+MEDIUM_RISK_THRESHOLD = 0.30
+HIGH_RISK_THRESHOLD = 0.60
+
+
 def calculate_risk_level(p):
-    if p < 0.30:
+    if p < MEDIUM_RISK_THRESHOLD:
         return "Low Risk"
-    if p < 0.60:
+    if p < HIGH_RISK_THRESHOLD:
         return "Medium Risk"
     return "High Risk"
 
@@ -176,3 +183,4 @@ def predict_customer(record):
         "model_name": bundle["name"],
         "feature_frame": X,
     }
+

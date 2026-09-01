@@ -12,6 +12,9 @@ from sklearn.model_selection import train_test_split
 from sklearn.metrics import accuracy_score, f1_score, precision_score, recall_score, roc_auc_score
 from sklearn.preprocessing import LabelEncoder
 
+# Shared risk bands so single, bulk and universal scoring agree on labels.
+from utils.prediction import calculate_risk_level
+
 logger = logging.getLogger("retainiq")
 
 CHURN_TARGET_PATTERNS = [
@@ -264,11 +267,14 @@ def _is_negative_direction(feature_name):
 
 
 def _humanize_feature_name(name):
+    name = str(name or "").strip()
+    if not name:
+        return "this attribute"
     if "_" in name:
-        parts = name.split("_")
+        parts = [part for part in name.split("_") if part]
         if len(parts) >= 2 and parts[-1][0].islower():
             return f"{' '.join(parts[:-1])} ({parts[-1]})"
-    return name.replace("_", " ").title()
+    return name.replace("_", " ").title() or "this attribute"
 
 
 def _match_recommendation(feature_name, value, median, is_onehot):
@@ -305,6 +311,21 @@ def _match_recommendation(feature_name, value, median, is_onehot):
 
 
 def generate_universal_recommendations(row, probability, risk_level,
+                                        feature_values=None, feature_names=None,
+                                        feature_importances=None, feature_stats=None):
+    """Never raise: a broken feature name must not fail an entire scoring run."""
+    try:
+        return _generate_universal_recommendations(
+            row, probability, risk_level,
+            feature_values=feature_values, feature_names=feature_names,
+            feature_importances=feature_importances, feature_stats=feature_stats,
+        )
+    except Exception as exc:  # pragma: no cover - defensive
+        logger.warning("Recommendation generation fell back to generic advice: %s", exc)
+        return _generic_recommendations(risk_level)
+
+
+def _generate_universal_recommendations(row, probability, risk_level,
                                         feature_values=None, feature_names=None,
                                         feature_importances=None, feature_stats=None):
     if feature_values is None or feature_names is None or feature_importances is None:
@@ -423,7 +444,7 @@ def run_universal_churn(file_storage):
                 feature_importances /= total_imp
 
             predictions = (probabilities >= 0.5).astype(int)
-            risk_levels = ['High Risk' if p >= 0.7 else 'Medium Risk' if p >= 0.4 else 'Low Risk' for p in probabilities]
+            risk_levels = [calculate_risk_level(p) for p in probabilities]
             metrics = {'accuracy': None, 'precision': None, 'recall': None, 'f1': None, 'roc_auc': None,
                        'note': 'Heuristic scoring (no labeled target column found)'}
 
@@ -521,14 +542,7 @@ def run_universal_churn(file_storage):
         feature_importances = model.feature_importances_
         probabilities = model.predict_proba(X)[:, 1]
         predictions = model.predict(X)
-        risk_levels = []
-        for prob in probabilities:
-            if prob >= 0.7:
-                risk_levels.append('High Risk')
-            elif prob >= 0.4:
-                risk_levels.append('Medium Risk')
-            else:
-                risk_levels.append('Low Risk')
+        risk_levels = [calculate_risk_level(prob) for prob in probabilities]
         results_df = df.copy()
         results_df['Churn Probability'] = np.round(probabilities * 100, 1)
         results_df['Churn_Probability'] = np.round(probabilities, 4)

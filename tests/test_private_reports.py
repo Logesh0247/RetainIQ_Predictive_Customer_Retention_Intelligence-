@@ -101,7 +101,7 @@ class PrivateReportsTests(unittest.TestCase):
         # Only the explicit action opens a fresh form, without deleting old data.
         fresh = self.owner.get("/bulk-prediction?new=1")
         self.assertEqual(fresh.status_code, 200)
-        self.assertIn(b"Upload Customer Dataset", fresh.data)
+        self.assertIn(b"Upload Churn Dataset", fresh.data)
         dashboard = self.owner.get("/dashboard")
         self.assertEqual(dashboard.status_code, 200)
         self.assertNotIn(b"No Signal Yet", dashboard.data)
