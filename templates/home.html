@@ -2,78 +2,166 @@
 {% block title %}Home{% endblock %}
 {% block content %}
 
-<section class="hero">
+<section class="hero home-hero reveal-item">
     <div>
-        <div class="hero-eyebrow"><span class="dot"></span>Live churn model &middot; {{ 'online' if model_ready else 'offline' }}</div>
-        <h1 class="hero-title">Know who's about to<br>lose <span class="accent">signal</span>.</h1>
-        <p class="hero-desc">
-            RetainIQ reads every customer's account like a signal strength meter. Weak signal means
-            they're about to churn &mdash; and you'll know why, and what to offer them, before they cancel.
-        </p>
-        <div class="hero-actions">
-            <a href="{{ url_for('single_prediction') }}" class="btn btn-primary">Predict Customer Churn</a>
-            <a href="{{ url_for('bulk_prediction') }}" class="btn btn-secondary">Bulk Prediction</a>
-            <a href="{{ url_for('prediction_dashboard') }}" class="btn btn-outline">View Dashboard</a>
+        <button class="hero-eyebrow model-status-trigger" id="model-status-trigger" type="button" aria-expanded="false" aria-controls="model-status-panel">
+            <span class="dot {{ 'offline' if not model_ready }}"></span>Live churn model &middot; {{ 'online' if model_ready else 'offline' }} <b>⌄</b>
+        </button>
+        <div class="model-status-popover" id="model-status-panel" hidden>
+            <div class="section-eyebrow">MODEL STATUS</div>
+            <ul>
+                <li><span><i class="{{ 'online' if model_ready }}"></i>Prediction Engine</span><strong>{{ 'ONLINE' if model_ready else 'OFFLINE' }}</strong></li>
+                <li><span><i class="{{ 'online' if model_ready }}"></i>Model</span><strong>{{ model_name or 'UNAVAILABLE' }}</strong></li>
+                <li><span><i class="{{ 'online' if explainability_ready }}"></i>Explainability</span><strong>{{ 'AVAILABLE' if explainability_ready else 'UNAVAILABLE' }}</strong></li>
+                <li><span><i class="{{ 'online' if model_ready }}"></i>Bulk Scoring</span><strong>{{ 'READY' if model_ready else 'UNAVAILABLE' }}</strong></li>
+                <li><span><i class="{{ 'online' if snapshot }}"></i>Dashboard Data</span><strong>{{ 'READY' if snapshot else 'NO SESSION' }}</strong></li>
+            </ul>
+            <small>System state checked when this page loaded</small>
         </div>
-        <br>
+        <h1 class="hero-title">Know who's about to<br>lose <span class="accent signal-glow">signal</span>.</h1>
+        <p class="hero-desc">RetainIQ reads every customer's account like a signal strength meter. Weak signal means they're about to churn &mdash; and you'll know why, and what to offer them, before they cancel.</p>
+        <div class="hero-actions home-hero-actions">
+            <a href="{{ url_for('single_prediction') }}" class="btn btn-primary action-arrow">Predict Customer Churn <span>→</span></a>
+            <a href="{{ url_for('bulk_prediction') }}" class="btn btn-secondary action-arrow">Bulk Prediction <span>→</span></a>
+
+        </div>
         <p class="hero-credit"><strong>Designed &amp; Developed by Logesh S.</strong><br>B.Sc. Data Science &middot; Machine Learning &amp; Data Analytics</p>
-        {% if not model_ready %}
-        <p class="hero-warning">⚠ The prediction model isn't loaded. Predictions are unavailable until models/best_model.pkl is present.</p>
-        {% endif %}
+        {% if not model_ready %}<p class="hero-warning">⚠ The prediction model isn't loaded. Predictions are currently unavailable.</p>{% endif %}
     </div>
-    <div class="hero-signal">
-        <div class="bar"></div><div class="bar"></div><div class="bar"></div><div class="bar"></div><div class="bar"></div>
+    <div class="hero-signal interactive-signal" aria-label="Decorative RetainIQ signal activity visualization">
+        <div class="bar" tabindex="0" data-label="Customer data"></div><div class="bar" tabindex="0" data-label="Data processing"></div><div class="bar" tabindex="0" data-label="ML prediction"></div><div class="bar" tabindex="0" data-label="Risk analysis"></div><div class="bar" tabindex="0" data-label="Retention action"></div>
+        <span class="signal-tooltip" id="signal-tooltip">System signal visualization</span>
+        <small>Live system visualization · decorative</small>
     </div>
 </section>
 
-<section class="features">
-    <div class="section-eyebrow">Capabilities</div>
-    <h2 class="section-title">What the console does</h2>
+<section class="home-command-row reveal-item">
+    <div class="home-command-box">
+        <div><span class="section-eyebrow">COMMAND PALETTE</span><strong>What would you like to do?</strong></div>
+        <button id="command-open" type="button"><span>⌕</span> Search RetainIQ actions… <kbd>Ctrl K</kbd></button>
+    </div>
+    <button class="shortcut-help" id="shortcut-help" type="button">? <span>Keyboard shortcuts</span></button>
+</section>
+
+<section class="home-snapshot reveal-item">
+    <header><div><span class="section-eyebrow">SYSTEM SNAPSHOT</span><h2>Retention intelligence at a glance</h2></div><span class="snapshot-state"><i class="{{ 'online' if model_ready }}"></i>{{ 'System ready' if model_ready else 'System unavailable' }}</span></header>
+    {% if snapshot %}
+    <div class="snapshot-grid">
+        <article><span>Customers Analyzed</span><strong>{{ snapshot.total_customers }}</strong><small>Latest scoring session</small></article>
+        <article class="danger"><span>High Risk</span><strong>{{ snapshot.high_risk_count }}</strong><small>{{ snapshot.high_risk_pct }}% of portfolio</small></article>
+        <article class="warning"><span>Predicted Churn</span><strong>{{ snapshot.predicted_churners }}</strong><small>{{ snapshot.churn_rate }}% churn rate</small></article>
+        <article><span>Model Status</span><strong class="status-value">ONLINE</strong><small>{{ model_name }}</small></article>
+    </div>
+    {% else %}
+    <div class="snapshot-empty"><span>⌁</span><div><strong>No prediction session active</strong><p>Run a prediction to populate your retention intelligence.</p></div><a href="{{ url_for('bulk_prediction') }}" class="btn btn-secondary btn-sm">Start Bulk Prediction →</a></div>
+    {% endif %}
+</section>
+
+<section class="home-quick-actions reveal-item">
+    <div class="section-eyebrow">QUICK ACTIONS</div>
+    <div class="quick-action-grid">
+        <a href="{{ url_for('single_prediction') }}"><span>+</span><div><strong>Predict Customer</strong><small>Individual risk assessment</small></div><b>→</b><kbd>P</kbd></a>
+        <a href="{{ url_for('bulk_prediction') }}"><span>⇧</span><div><strong>Bulk Score Customers</strong><small>Upload a customer portfolio</small></div><b>→</b><kbd>B</kbd></a>
+        <a href="{{ url_for('prediction_dashboard') }}"><span>◎</span><div><strong>Open Dashboard</strong><small>Explore retention intelligence</small></div><b>→</b><kbd>D</kbd></a>
+        <a href="{{ url_for('reports') }}"><span>▣</span><div><strong>View Reports</strong><small>Review previous outputs</small></div><b>→</b><kbd>R</kbd></a>
+    </div>
+</section>
+
+<section class="features home-features reveal-item">
+    <div class="section-eyebrow">CAPABILITIES</div><h2 class="section-title">What the console does</h2>
     <div class="card-grid">
-        <div class="feature-card">
-            <div class="feature-icon">01</div>
-            <h3>AI Churn Prediction</h3>
-            <p>Score any individual customer in seconds using a trained machine learning model.</p>
-        </div>
-        <div class="feature-card">
-            <div class="feature-icon">02</div>
-            <h3>Risk Analysis</h3>
-            <p>Every customer reads out as a 1&ndash;5 bar signal &mdash; instantly scannable risk, no legend needed.</p>
-        </div>
-        <div class="feature-card">
-            <div class="feature-icon">03</div>
-            <h3>Bulk Prediction</h3>
-            <p>Upload a CSV of your customer base and score your entire portfolio at once.</p>
-        </div>
-        <div class="feature-card">
-            <div class="feature-icon">04</div>
-            <h3>Retention Recommendations</h3>
-            <p>Get specific, explainable next-best-actions tailored to each customer's profile.</p>
-        </div>
-        <div class="feature-card">
-            <div class="feature-icon">05</div>
-            <h3>Executive Dashboard</h3>
-            <p>Track churn KPIs, risk distribution, and at-risk revenue in one console.</p>
-        </div>
-        <div class="feature-card">
-            <div class="feature-icon">06</div>
-            <h3>Business Intelligence</h3>
-            <p>Connect to Power BI for deeper, organization-wide retention reporting.</p>
-        </div>
+        <a class="feature-card interactive-feature" href="{{ url_for('single_prediction') }}"><div class="feature-icon">01</div><h3>AI Churn Prediction</h3><p>Score any individual customer in seconds using the trained machine learning model.</p><span>Start prediction →</span></a>
+        <a class="feature-card interactive-feature" href="{{ url_for('prediction_dashboard') }}"><div class="feature-icon">02</div><h3>Risk Analysis</h3><p>Translate model probability into clear low, medium, and high operational risk.</p><span>Explore risk →</span></a>
+        <a class="feature-card interactive-feature" href="{{ url_for('bulk_prediction') }}"><div class="feature-icon">03</div><h3>Bulk Prediction</h3><p>Upload a CSV customer portfolio and score it with one consistent pipeline.</p><span>Score customers →</span></a>
+        <a class="feature-card interactive-feature" href="{{ url_for('single_prediction') }}"><div class="feature-icon">04</div><h3>Retention Recommendations</h3><p>Get explainable next-best actions tailored to actual customer characteristics.</p><span>Generate an action →</span></a>
+        <a class="feature-card interactive-feature" href="{{ url_for('prediction_dashboard') }}"><div class="feature-icon">05</div><h3>Executive Dashboard</h3><p>Track churn KPIs, risk distribution, and estimated revenue exposure.</p><span>Open dashboard →</span></a>
+        <a class="feature-card interactive-feature" href="{{ url_for('reports') }}"><div class="feature-icon">06</div><h3>Business Intelligence</h3><p>Reopen and download private prediction reports from previous scoring runs.</p><span>View reports →</span></a>
     </div>
 </section>
 
-<section class="workflow">
-    <div class="section-eyebrow">Pipeline</div>
-    <h2 class="section-title">How a prediction happens</h2>
-    <div class="workflow-chain">
-        <span class="workflow-step">Customer Data</span><span class="workflow-arrow">→</span>
-        <span class="workflow-step">Data Processing</span><span class="workflow-arrow">→</span>
-        <span class="workflow-step">ML Prediction</span><span class="workflow-arrow">→</span>
-        <span class="workflow-step">Churn Probability</span><span class="workflow-arrow">→</span>
-        <span class="workflow-step">Risk Classification</span><span class="workflow-arrow">→</span>
-        <span class="workflow-step">Retention Recommendation</span>
+<section class="home-workflow reveal-item">
+    <div class="section-eyebrow">HOW RETAINIQ WORKS</div><h2 class="section-title">Prediction to retention action</h2>
+    <div class="interactive-workflow">
+        <article tabindex="0"><span>01</span><strong>Customer Data</strong><p>Provide one customer profile or a validated CSV portfolio.</p></article><i>→</i>
+        <article tabindex="0"><span>02</span><strong>ML Prediction</strong><p>The deployed model estimates each customer's churn probability.</p></article><i>→</i>
+        <article tabindex="0"><span>03</span><strong>Risk Analysis</strong><p>Probabilities become prioritized operational risk segments.</p></article><i>→</i>
+        <article tabindex="0"><span>04</span><strong>Retention Strategy</strong><p>Customer attributes drive practical, personalized next actions.</p></article>
     </div>
 </section>
 
+<section class="home-intelligence-grid reveal-item">
+    <article class="model-intelligence">
+        <header><div><span class="section-eyebrow">MODEL INTELLIGENCE</span><h2>Powered by Machine Learning</h2></div><span class="live-pill">{{ 'READY' if model_ready else 'OFFLINE' }}</span></header>
+        <dl><div><dt>Model</dt><dd>{{ model_name or 'Unavailable' }}</dd></div><div><dt>Task</dt><dd>Binary Classification</dd></div><div><dt>Output</dt><dd>Churn Probability</dd></div><div><dt>Explainability</dt><dd>{{ 'Feature Contributions' if explainability_ready else 'Unavailable' }}</dd></div></dl>
+    </article>
+    <a class="mini-risk-meter" href="{{ url_for('single_prediction') }}">
+        <span class="section-eyebrow">CUSTOMER RISK METER</span><h2>Explore customer-level risk</h2><div><small>LOW</small><i><b></b></i><small>HIGH</small></div><p>Turn customer attributes into a probability, risk segment, and retention plan.</p><strong>Start Single Prediction →</strong>
+    </a>
+</section>
+
+<section class="recent-activity reveal-item">
+    <header><div><span class="section-eyebrow">RECENT ACTIVITY</span><h2>Latest scoring session</h2></div><a href="{{ url_for('reports') }}">View all reports →</a></header>
+    {% if latest_activity %}
+    <a class="activity-row" href="{{ url_for('prediction_dashboard', run=latest_activity.run_id) }}"><i></i><div><strong>{{ latest_activity.label }}</strong><span>{{ latest_activity.detail }}</span></div><time>{{ latest_activity.time or 'Latest session' }}</time><b>→</b></a>
+    {% else %}
+    <div class="activity-empty"><span>○</span><div><strong>No recent prediction activity</strong><p>Start a prediction to create your first activity.</p></div></div>
+    {% endif %}
+</section>
+
+<div class="command-overlay" id="command-overlay" hidden>
+    <div class="command-dialog" role="dialog" aria-modal="true" aria-labelledby="command-title">
+        <label id="command-title"><span>⌕</span><input id="command-input" type="search" placeholder="Search RetainIQ…" autocomplete="off"><kbd>ESC</kbd></label>
+        <div id="command-results" role="listbox">
+            <a href="{{ url_for('single_prediction') }}" data-search="predict single customer"><span>P</span><div><strong>Single Customer Prediction</strong><small>Assess an individual customer</small></div><b>→</b></a>
+            <a href="{{ url_for('bulk_prediction') }}" data-search="bulk score upload customers"><span>B</span><div><strong>Bulk Customer Scoring</strong><small>Analyze a CSV portfolio</small></div><b>→</b></a>
+            <a href="{{ url_for('prediction_dashboard') }}" data-search="dashboard analytics risk"><span>D</span><div><strong>Prediction Dashboard</strong><small>Open retention intelligence</small></div><b>→</b></a>
+            <a href="{{ url_for('reports') }}" data-search="reports history download"><span>R</span><div><strong>Reports</strong><small>Review previous outputs</small></div><b>→</b></a>
+            <a href="{{ url_for('about') }}" data-search="about model retainiq"><span>A</span><div><strong>About RetainIQ</strong><small>Learn about the platform</small></div><b>→</b></a>
+        </div><p id="command-empty" hidden>No matching action found.</p>
+    </div>
+</div>
+
+<div class="shortcuts-overlay" id="shortcuts-overlay" hidden><div class="shortcuts-dialog" role="dialog" aria-modal="true"><header><div><span class="section-eyebrow">KEYBOARD SHORTCUTS</span><h2>Move around RetainIQ</h2></div><button id="shortcuts-close" aria-label="Close">×</button></header><dl><div><dt>P</dt><dd>Single Prediction</dd></div><div><dt>B</dt><dd>Bulk Prediction</dd></div><div><dt>D</dt><dd>Prediction Dashboard</dd></div><div><dt>R</dt><dd>Reports</dd></div><div><dt>H</dt><dd>Home</dd></div><div><dt>Ctrl K</dt><dd>Command palette</dd></div></dl></div></div>
+
+<script>
+(() => {
+    const $ = id => document.getElementById(id);
+    const statusButton = $('model-status-trigger'), statusPanel = $('model-status-panel');
+    statusButton.addEventListener('click', event => { event.stopPropagation(); statusPanel.hidden = !statusPanel.hidden; statusButton.setAttribute('aria-expanded', String(!statusPanel.hidden)); });
+    document.addEventListener('click', event => { if (!statusPanel.hidden && !statusPanel.contains(event.target)) { statusPanel.hidden = true; statusButton.setAttribute('aria-expanded','false'); } });
+
+    document.querySelectorAll('.interactive-signal .bar').forEach(bar => {
+        const show = () => { $('signal-tooltip').textContent = bar.dataset.label; $('signal-tooltip').classList.add('show'); };
+        bar.addEventListener('mouseenter', show); bar.addEventListener('focus', show); bar.addEventListener('mouseleave', () => $('signal-tooltip').classList.remove('show')); bar.addEventListener('blur', () => $('signal-tooltip').classList.remove('show'));
+    });
+
+    const command = $('command-overlay'), input = $('command-input'), results = [...$('command-results').querySelectorAll('a')];
+    function openCommand() { command.hidden = false; document.body.classList.add('modal-open'); input.value=''; filterCommands(); setTimeout(() => input.focus(), 10); }
+    function closeCommand() { command.hidden = true; document.body.classList.remove('modal-open'); }
+    function filterCommands() { const query=input.value.trim().toLowerCase(); let count=0; results.forEach(item => { item.hidden=!item.dataset.search.includes(query); if(!item.hidden) count++; }); $('command-empty').hidden=!!count; }
+    $('command-open').addEventListener('click', openCommand); input.addEventListener('input', filterCommands); command.addEventListener('click', event => { if(event.target===command) closeCommand(); });
+    command.querySelector('.command-dialog').addEventListener('keydown', event => {
+        const visible=results.filter(x=>!x.hidden), current=visible.indexOf(document.activeElement);
+        if(event.key==='ArrowDown'){event.preventDefault();(visible[current+1]||visible[0])?.focus()}
+        if(event.key==='ArrowUp'){event.preventDefault();(current>0?visible[current-1]:input)?.focus()}
+        if(event.key==='Enter' && document.activeElement===input && visible[0]){event.preventDefault();visible[0].click()}
+    });
+
+    const shortcuts=$('shortcuts-overlay');
+    function openShortcuts(){shortcuts.hidden=false;document.body.classList.add('modal-open')}; function closeShortcuts(){shortcuts.hidden=true;document.body.classList.remove('modal-open')};
+    $('shortcut-help').addEventListener('click',openShortcuts); $('shortcuts-close').addEventListener('click',closeShortcuts); shortcuts.addEventListener('click',e=>{if(e.target===shortcuts)closeShortcuts()});
+    document.addEventListener('keydown', event => {
+        const typing=['INPUT','TEXTAREA','SELECT'].includes(document.activeElement.tagName) || document.activeElement.isContentEditable;
+        if(event.key==='Escape'){closeCommand();closeShortcuts();return}
+        if((event.ctrlKey||event.metaKey)&&event.key.toLowerCase()==='k'){event.preventDefault();openCommand();return}
+        if(typing)return;
+        const key=event.key.toLowerCase();
+        if(key==='?'){event.preventDefault();openShortcuts();return}
+        const routes={p:'{{ url_for("single_prediction") }}',b:'{{ url_for("bulk_prediction") }}',d:'{{ url_for("prediction_dashboard") }}',r:'{{ url_for("reports") }}',h:'{{ url_for("home") }}'};
+        if(routes[key]) window.location.href=routes[key];
+    });
+
+    if('IntersectionObserver' in window){ const observer=new IntersectionObserver(entries=>entries.forEach(entry=>{if(entry.isIntersecting){entry.target.classList.add('revealed');observer.unobserve(entry.target)}}),{threshold:.08}); document.querySelectorAll('.reveal-item').forEach(item=>observer.observe(item)); } else document.querySelectorAll('.reveal-item').forEach(item=>item.classList.add('revealed'));
+})();
+</script>
 {% endblock %}

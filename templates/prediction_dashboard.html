@@ -1,268 +1,233 @@
 {% extends "base.html" %}
-
 {% block title %}Prediction Dashboard{% endblock %}
 
 {% block content %}
-
-<section class="page-header">
+<section class="dashboard-hero">
     <div>
-        <div class="section-eyebrow">SIGNAL INTELLIGENCE</div>
+        <div class="section-eyebrow">RETENTION COMMAND CENTER</div>
         <h1>Prediction Dashboard</h1>
-
-        {% if generated_at %}
-        <p>
-            Latest customer churn intelligence generated {{ generated_at }}.
-        </p>
-        {% else %}
-        <p>
-            Executive view of customer churn predictions and retention signals.
-        </p>
-        {% endif %}
+        <p>AI-powered customer churn risk monitoring and retention intelligence</p>
+        <div class="engine-status {{ '' if model_ready else 'engine-offline' }}"><span></span> Prediction Engine {{ 'Active' if model_ready else 'Unavailable' }}</div>
     </div>
-
     {% if kpis %}
-    <div>
-        <a href="{{ url_for('download_results', filename=download_filename) }}"
-           class="btn btn-outline">
-            ↓ Download Latest Results
-        </a>
+    <div class="dashboard-meta">
+        <div><strong>{{ kpis.total_customers }}</strong><small>customers analyzed</small></div>
+        {% if generated_at %}<div><strong>{{ generated_at }}</strong><small>last prediction</small></div>{% endif %}
+        <a href="{{ url_for('download_results', filename=download_filename, run=run_id) }}" class="btn btn-primary">↓ Download Predictions</a>
     </div>
     {% endif %}
 </section>
 
-
 {% if not kpis %}
-
-<section class="empty-state">
-    <h3>No Signal Yet</h3>
-
-    <p>
-        Run a bulk prediction to populate this dashboard with real customer
-        risk signals, churn KPIs and retention intelligence.
-    </p>
-
-    <a href="{{ url_for('bulk_prediction') }}" class="btn btn-primary">
-        Go to Bulk Prediction →
-    </a>
+<section class="empty-state dashboard-empty">
+    <div class="empty-icon">⌁</div>
+    <div class="section-eyebrow">No Signal Yet</div>
+    <h3>No prediction intelligence available</h3>
+    <p>Run a bulk prediction to analyze your customer portfolio and populate this command center with real risk signals.</p>
+    <a href="{{ url_for('bulk_prediction') }}" class="btn btn-primary">Run Bulk Prediction →</a>
 </section>
-
-
 {% else %}
 
-<div class="section-eyebrow">PORTFOLIO OVERVIEW</div>
-
-<div class="kpi-grid">
-
-    <div class="kpi-card">
-        <div class="kpi-label">Total Customers</div>
-        <div class="kpi-value">{{ kpis.total_customers }}</div>
-    </div>
-
-    <div class="kpi-card kpi-danger">
-        <div class="kpi-label">
-            Predicted Churners
-            <span class="info-dot">i<span class="tooltip">Customers with churn probability of 50% or higher.</span></span>
-        </div>
-        <div class="kpi-value">{{ kpis.predicted_churners }}</div>
-    </div>
-
-    <div class="kpi-card kpi-danger">
-        <div class="kpi-label">Churn Rate</div>
-        <div class="kpi-value">{{ kpis.churn_rate }}%</div>
-    </div>
-
-    <div class="kpi-card">
-        <div class="kpi-label">Avg. Probability</div>
-        <div class="kpi-value">{{ kpis.avg_churn_probability }}%</div>
-    </div>
-
-    <div class="kpi-card kpi-danger">
-        <div class="kpi-label">
-            High Risk
-            <span class="info-dot">i<span class="tooltip">Customers with churn probability of 60% or higher.</span></span>
-        </div>
-        <div class="kpi-value">{{ kpis.high_risk_count }}</div>
-    </div>
-
-    <div class="kpi-card kpi-warning">
-        <div class="kpi-label">
-            Medium Risk
-            <span class="info-dot">i<span class="tooltip">Customers with churn probability from 30% to below 60%.</span></span>
-        </div>
-        <div class="kpi-value">{{ kpis.medium_risk_count }}</div>
-    </div>
-
-    <div class="kpi-card kpi-success">
-        <div class="kpi-label">
-            Low Risk
-            <span class="info-dot">i<span class="tooltip">Customers with churn probability below 30%.</span></span>
-        </div>
-        <div class="kpi-value">{{ kpis.low_risk_count }}</div>
-    </div>
-
-    <div class="kpi-card">
-        <div class="kpi-label">Avg. Monthly Charges</div>
-        <div class="kpi-value">${{ kpis.avg_monthly_charges }}</div>
-    </div>
-
-    <div class="kpi-card">
-        <div class="kpi-label">Avg. Tenure</div>
-        <div class="kpi-value">{{ kpis.avg_tenure }} mo</div>
-    </div>
-
-    <div class="kpi-card kpi-danger">
-        <div class="kpi-label">At-Risk Revenue</div>
-        <div class="kpi-value">${{ kpis.at_risk_revenue }}</div>
-    </div>
-
-</div>
-
-<section class="dashboard-section">
-    <div class="section-eyebrow">RISK INTELLIGENCE</div>
-    <h2 class="section-title">Customer Risk Distribution</h2>
-    <p class="section-desc">
-        RetainIQ converts churn probability into three operational risk
-        segments so retention teams can prioritize customer intervention.
-    </p>
-    <div class="risk-distribution">
-        <div class="risk-dist-row">
-            <span class="risk-dist-label">Low Risk ({{ kpis.low_risk_count }})</span>
-            <div class="risk-track"><div class="risk-fill risk-low" style="width: {{ kpis.low_risk_pct }}%;"></div></div>
-            <span class="risk-dist-pct">{{ kpis.low_risk_pct }}%</span>
-        </div>
-        <div class="risk-dist-row">
-            <span class="risk-dist-label">Medium Risk ({{ kpis.medium_risk_count }})</span>
-            <div class="risk-track"><div class="risk-fill risk-medium" style="width: {{ kpis.medium_risk_pct }}%;"></div></div>
-            <span class="risk-dist-pct">{{ kpis.medium_risk_pct }}%</span>
-        </div>
-        <div class="risk-dist-row">
-            <span class="risk-dist-label">High Risk ({{ kpis.high_risk_count }})</span>
-            <div class="risk-track"><div class="risk-fill risk-high" style="width: {{ kpis.high_risk_pct }}%;"></div></div>
-            <span class="risk-dist-pct">{{ kpis.high_risk_pct }}%</span>
-        </div>
-    </div>
+<section class="executive-kpis" aria-label="Portfolio key metrics">
+    <article class="executive-kpi"><span class="kpi-icon">◎</span><div><small>Total Customers</small><strong id="kpi-total">{{ kpis.total_customers }}</strong><em>Analyzed portfolio</em></div></article>
+    <article class="executive-kpi danger"><span class="kpi-icon">!</span><div><small>High-Risk Customers</small><strong id="kpi-high">{{ kpis.high_risk_count }}</strong><em id="kpi-high-sub">{{ kpis.high_risk_pct }}% need priority review</em></div></article>
+    <article class="executive-kpi danger"><span class="kpi-icon">↗</span><div><small>Predicted Churn Rate</small><strong id="kpi-rate">{{ kpis.churn_rate }}%</strong><em>Model classification ≥ 50%</em></div></article>
+    <article class="executive-kpi"><span class="kpi-icon">∿</span><div><small>Avg. Churn Probability</small><strong id="kpi-average">{{ kpis.avg_churn_probability }}%</strong><em>Across current selection</em></div></article>
+    <article class="executive-kpi warning"><span class="kpi-icon">$</span><div><small>Est. Revenue at Risk</small><strong id="kpi-revenue">${{ '%.2f'|format(kpis.at_risk_revenue) }}</strong><em>Monthly charges · med/high risk</em></div></article>
 </section>
 
-<section class="dashboard-section">
-    <div class="section-eyebrow">MODEL OUTPUT</div>
-    <h2 class="section-title">Prediction Summary</h2>
-    <p class="section-desc">
-        Portfolio-level interpretation of the latest Logistic Regression churn
-        predictions.
-    </p>
-    <div class="result-grid">
-        <div class="result-card">
-            <h3 class="result-card-title">Likely to Churn</h3>
-            <div class="probability-display text-danger">{{ kpis.predicted_churners }}</div>
-            <div class="prediction-verdict verdict-churn">{{ kpis.churn_rate }}% of customers</div>
+<section class="dashboard-grid dashboard-grid-charts">
+    <article class="insight-card">
+        <header><div><span class="section-eyebrow">RISK MIX</span><h2>Churn Risk Distribution</h2></div><span class="live-pill">LIVE</span></header>
+        <div class="donut-layout">
+            <div id="risk-donut" class="risk-donut" role="img" aria-label="Risk distribution donut"><div><strong id="donut-total">{{ kpis.total_customers }}</strong><span>customers</span></div></div>
+            <div id="risk-legend" class="chart-legend"></div>
         </div>
-        <div class="result-card">
-            <h3 class="result-card-title">Likely to Stay</h3>
-            <div class="probability-display text-success">{{ kpis.total_customers - kpis.predicted_churners }}</div>
-            <div class="prediction-verdict verdict-stay">{{ (100 - kpis.churn_rate)|round(1) }}% of customers</div>
-        </div>
-    </div>
+    </article>
+    <article class="insight-card">
+        <header><div><span class="section-eyebrow">MODEL CONFIDENCE</span><h2>Probability Distribution</h2></div></header>
+        <div id="probability-chart" class="vertical-chart" aria-label="Churn probability distribution"></div>
+    </article>
 </section>
 
-<section class="dashboard-section">
-    <div class="section-eyebrow">PRIORITY QUEUE</div>
-    <h2 class="section-title">Top 10 Highest-Risk Customers</h2>
-    <p class="section-desc" style="margin-bottom: 16px;">
-        Select <strong>View</strong> to inspect the customer's signal breakdown and retention plan.
-    </p>
+<section class="insight-card priority-card">
+    <header>
+        <div><span class="section-eyebrow">PRIORITY QUEUE</span><h2>🔥 Top 10 Highest-Risk Customers</h2><p>Ranked by actual model churn probability. Select a customer to inspect their risk profile.</p></div>
+    </header>
     <div class="table-wrap">
-        <table class="data-table">
-            <thead>
-                <tr>
-                    <th>Customer ID</th>
-                    <th>Signal</th>
-                    <th>Probability</th>
-                    <th>Risk</th>
-                    <th>Monthly Charges</th>
-                    <th>Tenure</th>
-                    <th>Contract</th>
-                    <th>Details</th>
-                </tr>
-            </thead>
+        <table class="data-table risk-table">
+            <thead><tr><th>Customer ID</th><th>Churn Probability</th><th>Risk Level</th><th>Monthly Charges</th><th>Tenure</th><th>Contract</th><th>Recommended Action</th><th></th></tr></thead>
             <tbody>
-                {% for c in top_risk %}
-                <tr>
-                    <td class="mono">{{ c.id }}</td>
-                    <td>
-                        <div class="signal-meter {{ c.risk_css }}">
-                            {% for i in range(5) %}
-                            <span class="bar {{ 'lit' if i < c.signal_bars else '' }}"></span>
-                            {% endfor %}
-                        </div>
-                    </td>
-                    <td class="mono">{{ c.probability_pct }}%</td>
-                    <td><span class="risk-badge risk-badge-sm {{ c.risk_css }}">{{ c.risk_level }}</span></td>
-                    <td>${{ c.monthly_charges }}</td>
-                    <td>{{ c.tenure }} mo</td>
-                    <td>{{ c.contract }}</td>
-                    <td><a href="#detail-{{ loop.index }}" class="view-link">View →</a></td>
-                </tr>
-                {% endfor %}
+            {% for c in top_risk %}
+            <tr>
+                <td class="mono">{{ c.id }}</td>
+                <td><div class="prob-cell"><span>{{ c.probability_pct }}%</span><i><b class="{{ c.risk_css }}" style="width:{{ c.probability_pct }}%"></b></i></div></td>
+                <td><span class="risk-badge risk-badge-sm {{ c.risk_css }}">{{ c.risk_level }}</span></td>
+                <td>${{ '%.2f'|format(c.monthly_charges) }}</td><td>{{ c.tenure }} mo</td><td>{{ c.contract }}</td>
+                <td class="action-cell">{{ c.primary_action }}</td>
+                <td><button class="text-button customer-view" data-id="{{ c.id }}">View →</button></td>
+            </tr>
+            {% endfor %}
             </tbody>
         </table>
     </div>
 </section>
 
-<section class="dashboard-section">
-    <div class="section-eyebrow">RETENTION INTELLIGENCE</div>
-    <h2 class="section-title">Retention Opportunities</h2>
-    <p class="section-desc">
-        If you save the high-risk group, you protect about
-        <strong>${{ '%.2f'|format(kpis.high_risk_revenue) }}</strong> per month.
-        Medium and High Risk together are
-        <strong>{{ kpis.medium_risk_count + kpis.high_risk_count }}</strong>
-        customers and approximately
-        <strong>${{ kpis.at_risk_revenue }}</strong>
-        in monthly recurring revenue currently at risk.
-    </p>
-    <div class="result-grid">
-        <div class="result-card">
-            <h3 class="result-card-title">Customers Requiring Attention</h3>
-            <div class="probability-display text-danger">{{ kpis.medium_risk_count + kpis.high_risk_count }}</div>
-        </div>
-        <div class="result-card">
-            <h3 class="result-card-title">Monthly Revenue at Risk</h3>
-            <div class="probability-display text-danger">${{ kpis.at_risk_revenue }}</div>
+<section class="customer-intelligence">
+    <div class="lookup-card insight-card">
+        <span class="section-eyebrow">CUSTOMER LOOKUP</span><h2>Find a Customer</h2>
+        <p>Search an exact Customer ID to open its prediction, drivers, and recommended next actions.</p>
+        <form id="lookup-form" class="lookup-form">
+            <label class="sr-only" for="customer-lookup">Search Customer ID</label>
+            <input id="customer-lookup" type="search" placeholder="Search Customer ID" autocomplete="off">
+            <button class="btn btn-primary" type="submit">Search</button>
+        </form>
+        <div id="lookup-message" class="lookup-message" aria-live="polite"></div>
+    </div>
+    <div id="customer-profile" class="insight-card profile-card profile-empty">
+        <div class="profile-placeholder"><span>◎</span><h3>Select a customer</h3><p>Customer-specific risk intelligence will appear here.</p></div>
+        <div class="profile-content" hidden>
+            <header><div><span class="section-eyebrow">CUSTOMER RISK PROFILE</span><h2 id="profile-id"></h2></div><span id="profile-prediction" class="prediction-chip"></span></header>
+            <div class="profile-main">
+                <div id="risk-gauge" class="risk-gauge"><div><strong id="profile-probability"></strong><span>CHURN RISK</span></div></div>
+                <div class="profile-facts" id="profile-facts"></div>
+            </div>
+            <div class="profile-columns">
+                <div><h3>🧠 Key Churn Drivers</h3><ol id="profile-drivers" class="driver-list"></ol></div>
+                <div><h3>💡 Recommended Retention Actions</h3><ul id="profile-actions" class="recommendation-cards"></ul></div>
+            </div>
         </div>
     </div>
 </section>
 
-{% for c in top_risk %}
-<div class="modal-overlay" id="detail-{{ loop.index }}">
-    <div class="modal-box">
-        <div class="modal-head">
-            <div>
-                <h3 style="margin-bottom: 2px;">{{ c.id }}</h3>
-                <div class="modal-id">{{ c.contract }} · {{ c.internet_service }} · {{ c.payment_method }}</div>
-            </div>
-            <a href="#" class="modal-close" aria-label="Close">&times;</a>
-        </div>
-        <div class="signal-meter large {{ c.risk_css }}" style="margin: 8px 0 14px;">
-            {% for i in range(5) %}
-            <span class="bar {{ 'lit' if i < c.signal_bars else '' }}"></span>
-            {% endfor %}
-        </div>
-        <p class="mono" style="font-size: 1.6rem; font-weight: 700; margin: 0 0 4px;">{{ c.probability_pct }}%</p>
-        <div class="risk-badge {{ c.risk_css }}">{{ c.risk_level }}</div>
-        {% if c.top_drivers %}
-        <div class="drivers-box">
-            <h4>Top Risk Drivers</h4>
-            <ul>{% for driver in c.top_drivers %}<li>{{ driver }}</li>{% endfor %}</ul>
-        </div>
-        {% endif %}
-        <div class="drivers-box">
-            <h4>Retention Plan</h4>
-            <ul>{% for rec in c.recommendations %}<li>{{ rec }}</li>{% endfor %}</ul>
-        </div>
+<section class="insight-card analysis-card">
+    <header><div><span class="section-eyebrow">COHORT INTELLIGENCE</span><h2>Churn Analysis</h2><p>Predicted churn rate and customer volume across key portfolio dimensions.</p></div></header>
+    <div class="analysis-grid">
+        <div><h3>Churn by Contract</h3><div id="contract-chart" class="horizontal-chart"></div></div>
+        <div><h3>Churn by Tenure</h3><div id="tenure-chart" class="horizontal-chart"></div></div>
+        <div><h3>Churn by Monthly Charges</h3><div id="charges-chart" class="horizontal-chart"></div></div>
     </div>
-</div>
-{% endfor %}
+</section>
 
+<section class="insight-card portfolio-card">
+    <header><div><span class="section-eyebrow">CUSTOMER PORTFOLIO</span><h2>Explore Predictions</h2><p>Filter and prioritize the scored customer list. Dashboard metrics and charts update with your selection.</p></div></header>
+    <div class="filter-toolbar">
+        <label>Risk Level<select id="filter-risk"><option>All</option><option>High Risk</option><option>Medium Risk</option><option>Low Risk</option></select></label>
+        <label>Prediction<select id="filter-prediction"><option>All</option><option>Likely to Churn</option><option>Likely to Stay</option></select></label>
+        <label>Contract<select id="filter-contract"><option>All</option><option>Month-to-month</option><option>One year</option><option>Two year</option></select></label>
+        <label class="filter-search">Customer ID<input id="filter-search" type="search" placeholder="Filter customer ID"></label>
+        <button id="clear-filters" class="btn btn-outline" type="button">Clear</button>
+    </div>
+    <div id="table-loading" class="loading-line" hidden></div>
+    <div class="table-wrap"><table class="data-table risk-table"><thead><tr><th>Customer ID</th><th>Probability</th><th>Prediction</th><th>Risk</th><th>Monthly Charges</th><th>Tenure</th><th>Contract</th><th>Action</th></tr></thead><tbody id="portfolio-body"></tbody></table></div>
+    <div id="table-empty" class="table-empty" hidden>No customers match the selected filters.</div>
+    <div class="pagination"><span id="page-summary"></span><div><button id="page-prev" class="page-button">← Previous</button><span id="page-numbers"></span><button id="page-next" class="page-button">Next →</button></div></div>
+</section>
+
+<script id="dashboard-data" type="application/json">{{ dashboard_data|tojson }}</script>
+<script>
+(() => {
+    'use strict';
+    const initial = JSON.parse(document.getElementById('dashboard-data').textContent);
+    const runId = {{ (run_id or '')|tojson }};
+    let state = initial;
+    let timer;
+    const $ = id => document.getElementById(id);
+    const escapeHtml = value => String(value ?? '').replace(/[&<>'"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#39;','"':'&quot;'}[c]));
+    const money = value => new Intl.NumberFormat('en-US', {style:'currency', currency:'USD'}).format(Number(value || 0));
+    const riskClass = risk => ({'High Risk':'risk-high','Medium Risk':'risk-medium','Low Risk':'risk-low'}[risk] || '');
+
+    function renderKpis(k) {
+        const empty = !k;
+        $('kpi-total').textContent = empty ? '0' : k.total_customers;
+        $('kpi-high').textContent = empty ? '0' : k.high_risk_count;
+        $('kpi-high-sub').textContent = empty ? 'No matching customers' : `${k.high_risk_pct}% need priority review`;
+        $('kpi-rate').textContent = `${empty ? 0 : k.churn_rate}%`;
+        $('kpi-average').textContent = `${empty ? 0 : k.avg_churn_probability}%`;
+        $('kpi-revenue').textContent = money(empty ? 0 : k.at_risk_revenue);
+    }
+
+    function renderRisk(k) {
+        const low = k?.low_risk_pct || 0, med = k?.medium_risk_pct || 0, high = k?.high_risk_pct || 0;
+        $('risk-donut').style.background = `conic-gradient(var(--ok) 0 ${low}%, var(--warn) ${low}% ${low+med}%, var(--bad) ${low+med}% ${low+med+high}%, var(--line) 0)`;
+        $('donut-total').textContent = k?.total_customers || 0;
+        $('risk-legend').innerHTML = [
+            ['Low Risk', k?.low_risk_count||0, low, 'low'], ['Medium Risk', k?.medium_risk_count||0, med, 'medium'], ['High Risk', k?.high_risk_count||0, high, 'high']
+        ].map(x => `<div title="${x[0]}: ${x[1]} customers (${x[2]}%)"><i class="legend-${x[3]}"></i><span>${x[0]}<small>${x[1]} customers</small></span><strong>${x[2]}%</strong></div>`).join('');
+    }
+
+    function renderVertical(data) {
+        const max = Math.max(...data.map(x => x.count), 1);
+        $('probability-chart').innerHTML = data.map(x => `<div class="vbar" title="${x.label}: ${x.count} customers (${x.pct}%)"><span>${x.count}</span><i style="height:${Math.max(x.count/max*100, 2)}%"></i><small>${x.label}</small></div>`).join('');
+    }
+
+    function renderHorizontal(id, data) {
+        $(id).innerHTML = data.map(x => `<div class="hbar" title="${x.label}: ${x.rate}% predicted churn across ${x.count} customers"><div><span>${escapeHtml(x.label)}</span><small>${x.count} customers</small><strong>${x.rate}%</strong></div><i><b style="width:${x.rate}%"></b></i></div>`).join('') || '<p class="muted">Analysis unavailable for this selection.</p>';
+    }
+
+    function renderTable(data) {
+        $('portfolio-body').innerHTML = data.rows.map(c => `<tr><td class="mono">${escapeHtml(c.id)}</td><td><div class="prob-cell"><span>${c.probability_pct}%</span><i><b class="${riskClass(c.risk_level)}" style="width:${c.probability_pct}%"></b></i></div></td><td>${escapeHtml(c.prediction)}</td><td><span class="risk-badge risk-badge-sm ${riskClass(c.risk_level)}">${escapeHtml(c.risk_level)}</span></td><td>${money(c.monthly_charges)}</td><td>${c.tenure} mo</td><td>${escapeHtml(c.contract)}</td><td><button class="text-button customer-view" data-id="${escapeHtml(c.id)}">View →</button></td></tr>`).join('');
+        $('table-empty').hidden = data.total !== 0;
+        const start = data.total ? (data.page-1)*data.page_size+1 : 0;
+        const end = Math.min(data.page*data.page_size, data.total);
+        $('page-summary').textContent = `Showing ${start}–${end} of ${data.total} customers`;
+        $('page-prev').disabled = data.page <= 1; $('page-next').disabled = data.page >= data.pages;
+        const from = Math.max(1, data.page-2), to = Math.min(data.pages, from+4);
+        $('page-numbers').innerHTML = Array.from({length:to-from+1}, (_,i) => from+i).map(p => `<button class="page-number ${p===data.page?'active':''}" data-page="${p}">${p}</button>`).join('');
+    }
+
+    function renderAll(data) {
+        state = data; renderKpis(data.kpis); renderRisk(data.kpis); renderVertical(data.analytics.probability);
+        renderHorizontal('contract-chart', data.analytics.contract); renderHorizontal('tenure-chart', data.analytics.tenure); renderHorizontal('charges-chart', data.analytics.charges); renderTable(data);
+    }
+
+    async function loadData(page=1) {
+        $('table-loading').hidden = false;
+        const params = new URLSearchParams({run:runId, page, risk:$('filter-risk').value, prediction:$('filter-prediction').value, contract:$('filter-contract').value, search:$('filter-search').value.trim()});
+        try {
+            const response = await fetch(`{{ url_for('prediction_dashboard_data') }}?${params}`);
+            const data = await response.json();
+            if (!response.ok) throw new Error(data.error || 'Unable to load dashboard data.');
+            renderAll(data);
+        } catch (error) { $('table-empty').hidden = false; $('table-empty').textContent = error.message; }
+        finally { $('table-loading').hidden = true; }
+    }
+
+    async function lookupCustomer(id) {
+        const value = String(id || '').trim(); if (!value) { $('lookup-message').textContent = 'Enter a Customer ID to search.'; return; }
+        $('lookup-message').innerHTML = '<span class="spinner"></span> Loading customer intelligence…';
+        try {
+            const params = new URLSearchParams({run:runId, customer_id:value});
+            const response = await fetch(`{{ url_for('prediction_dashboard_data') }}?${params}`);
+            const data = await response.json();
+            if (!response.ok) throw new Error(data.error);
+            renderProfile(data.customer); $('lookup-message').textContent = '';
+            $('customer-profile').scrollIntoView({behavior:'smooth', block:'center'});
+        } catch (error) { $('lookup-message').textContent = error.message || 'Customer not found. Please check the Customer ID.'; }
+    }
+
+    function renderProfile(c) {
+        const cls = riskClass(c.risk_level), p = Number(c.probability_pct);
+        $('customer-profile').classList.remove('profile-empty'); document.querySelector('.profile-placeholder').hidden = true; document.querySelector('.profile-content').hidden = false;
+        $('profile-id').textContent = c.id; $('profile-prediction').textContent = c.prediction;
+        $('profile-prediction').className = `prediction-chip ${c.will_churn?'churn':'retain'}`;
+        $('profile-probability').textContent = `${p}%`; $('risk-gauge').className = `risk-gauge ${cls}`; $('risk-gauge').style.setProperty('--score', `${p*3.6}deg`);
+        $('profile-facts').innerHTML = [['Risk Level',c.risk_level],['Monthly Charges',money(c.monthly_charges)],['Tenure',`${c.tenure} months`],['Contract',c.contract],['Internet Service',c.internet_service],['Payment Method',c.payment_method],['Senior Citizen',c.senior_citizen]].map(x => `<div><small>${x[0]}</small><strong>${escapeHtml(x[1])}</strong></div>`).join('');
+        $('profile-drivers').innerHTML = (c.top_drivers||[]).map((x,i) => `<li><span>${i+1}</span><p>${escapeHtml(x)}</p></li>`).join('') || '<li><p>Individual model explanation is unavailable.</p></li>';
+        $('profile-actions').innerHTML = (c.recommendations||[]).map((x,i) => `<li><span>${i+1}</span><p>${escapeHtml(x)}</p></li>`).join('');
+    }
+
+    document.addEventListener('click', e => {
+        const view = e.target.closest('.customer-view'); if (view) { $('customer-lookup').value = view.dataset.id; lookupCustomer(view.dataset.id); }
+        const number = e.target.closest('.page-number'); if (number) loadData(number.dataset.page);
+    });
+    $('lookup-form').addEventListener('submit', e => { e.preventDefault(); lookupCustomer($('customer-lookup').value); });
+    ['filter-risk','filter-prediction','filter-contract'].forEach(id => $(id).addEventListener('change', () => loadData()));
+    $('filter-search').addEventListener('input', () => { clearTimeout(timer); timer=setTimeout(() => loadData(), 300); });
+    $('clear-filters').addEventListener('click', () => { $('filter-risk').value='All'; $('filter-prediction').value='All'; $('filter-contract').value='All'; $('filter-search').value=''; loadData(); });
+    $('page-prev').addEventListener('click', () => loadData(state.page-1)); $('page-next').addEventListener('click', () => loadData(state.page+1));
+    renderAll(initial);
+})();
+</script>
 {% endif %}
-
 {% endblock %}

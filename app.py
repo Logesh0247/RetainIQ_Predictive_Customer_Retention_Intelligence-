@@ -16,7 +16,7 @@ from flask import (
 )
 from werkzeug.middleware.proxy_fix import ProxyFix
 
-from src.preprocessing import PreprocessingError
+from src.preprocessing import PreprocessingError, REQUIRED_COLUMNS
 from utils.prediction import (
     predict_customer, is_model_available, ModelLoadError, load_model,
     MODEL_COMPARISON,
@@ -24,10 +24,13 @@ from utils.prediction import (
 from utils.bulk_prediction import (
     run_bulk_prediction,
     run_sample_prediction,
+    inspect_bulk_prediction_bytes,
     compute_dashboard_kpis,
     save_results_csv,
     build_display_records,
     build_top_risk_records,
+    build_dashboard_page,
+    build_customer_detail,
     save_bundle_cache,
     load_bundle_cache,
     BulkPredictionError,
@@ -35,6 +38,7 @@ from utils.bulk_prediction import (
     REPORTS_DIR,
 )
 from utils.recommendation import generate_recommendation
+from utils.universal_churn import run_universal_churn, UniversalChurnError
 
 
 # ---------------------------------------------------------------------------
@@ -411,9 +415,33 @@ def _load_run_bundle(run=None):
 
 @app.route("/")
 def home():
+    """Product command center with only real model and prediction-session state."""
+    model_bundle = load_model()
+    prediction_bundle, _, run_id = _load_run_bundle()
+    snapshot = None
+    latest_activity = None
+    if prediction_bundle is not None:
+        snapshot = compute_dashboard_kpis(prediction_bundle["results_df"])
+        generated_at = session.get("latest_results_generated_at")
+        if not generated_at and run_id:
+            folder = _run_folder(run_id)
+            if folder:
+                generated_at = datetime.fromtimestamp(os.path.getmtime(folder)).strftime(
+                    "%d %b %Y, %I:%M %p"
+                )
+        latest_activity = {
+            "label": "Bulk prediction completed",
+            "detail": f"{len(prediction_bundle['results_df']):,} customers scored",
+            "time": generated_at,
+            "run_id": run_id,
+        }
     return render_template(
         "home.html",
-        model_ready=is_model_available()
+        model_ready=model_bundle is not None,
+        model_name=model_bundle.get("name") if model_bundle else None,
+        explainability_ready=bool(model_bundle and hasattr(model_bundle.get("model"), "coef_")),
+        snapshot=snapshot,
+        latest_activity=latest_activity,
     )
 
 
@@ -516,6 +544,7 @@ def bulk_results_view():
             records_by_prob=build_display_records(bundle, sort_by="probability")[:MAX_DISPLAY_ROWS],
             records_by_charges=build_display_records(bundle, sort_by="charges")[:MAX_DISPLAY_ROWS],
             records_by_tenure=build_display_records(bundle, sort_by="tenure")[:MAX_DISPLAY_ROWS],
+            top_risk=build_top_risk_records(bundle),
             max_display_rows=MAX_DISPLAY_ROWS,
             total_rows=total_rows,
             run_id=run_id,
@@ -530,19 +559,205 @@ def bulk_results_view():
 def bulk_prediction():
 
     if request.method == "GET":
-        return render_template("bulk_prediction.html", model_ready=is_model_available())
+        # Keep the latest completed scoring workspace intact while users move
+        # around the application. Only the explicit "Run New Prediction"
+        # action opens a fresh upload form; the old run remains available until
+        # a replacement dataset has scored successfully.
+        if request.args.get("new") != "1":
+            existing_bundle, _, existing_run_id = _load_run_bundle()
+            if existing_bundle is not None:
+                return redirect(url_for("bulk_results_view", run=existing_run_id))
+        return render_template(
+            "bulk_prediction.html",
+            model_ready=is_model_available(),
+            max_upload_mb=app.config["MAX_CONTENT_LENGTH"] // (1024 * 1024),
+            required_columns=REQUIRED_COLUMNS,
+        )
 
+    file_obj = request.files.get("customer_csv")
+    if file_obj is None or not getattr(file_obj, "filename", ""):
+        flash("Please select a CSV file to upload.", "error")
+        return render_template(
+            "bulk_prediction.html", model_ready=is_model_available(),
+            max_upload_mb=app.config["MAX_CONTENT_LENGTH"] // (1024 * 1024),
+            required_columns=REQUIRED_COLUMNS,
+        )
+
+    # Auto-extract CSV from ZIP files (Kaggle downloads are ZIPs)
+    import io as _io
+    original_filename = file_obj.filename
+    raw_bytes = file_obj.read()
+    if original_filename.lower().endswith('.zip'):
+        import zipfile
+        try:
+            zf = zipfile.ZipFile(_io.BytesIO(raw_bytes))
+            csv_files = [f for f in zf.namelist() if f.lower().endswith('.csv')]
+            if not csv_files:
+                flash("The ZIP file does not contain any CSV files. Please extract the CSV and upload it directly.", "error")
+                return render_template(
+                    "bulk_prediction.html", model_ready=is_model_available(),
+                    max_upload_mb=app.config["MAX_CONTENT_LENGTH"] // (1024 * 1024),
+                    required_columns=REQUIRED_COLUMNS,
+                )
+            raw_bytes = zf.read(csv_files[0])
+            original_filename = csv_files[0]
+        except zipfile.BadZipFile:
+            flash("The uploaded file is not a valid ZIP file.", "error")
+            return render_template(
+                "bulk_prediction.html", model_ready=is_model_available(),
+                max_upload_mb=app.config["MAX_CONTENT_LENGTH"] // (1024 * 1024),
+                required_columns=REQUIRED_COLUMNS,
+            )
+
+    # Create a file-like object from the (possibly extracted) bytes
+    file_like = _io.BytesIO(raw_bytes)
+    file_like.filename = original_filename
+
+    # Try Telco-specific prediction first
     try:
-        file_obj = request.files.get("customer_csv")
-        bundle = run_bulk_prediction(file_obj)
+        bundle = run_bulk_prediction(file_like)
         return _render_bulk_results(bundle)
-    except BulkPredictionError as exc:
-        flash(str(exc), "error")
-        return render_template("bulk_prediction.html", model_ready=is_model_available())
-    except Exception as exc:
+    except BulkPredictionError as telco_exc:
+        # If Telco failed, try universal churn engine as fallback
+        logger.info("Telco prediction failed, trying universal churn engine: %s", telco_exc)
+        try:
+            file_like.seek(0)
+            bundle = run_universal_churn(file_like)
+            return _render_bulk_results(bundle)
+        except UniversalChurnError as uni_exc:
+            flash(
+                f"Could not predict churn: {uni_exc}. "
+                "Ensure your CSV has a churn target column (e.g. 'Churn', 'Exited', 'Attrition', 'Cancelled').",
+                "error"
+            )
+            return render_template(
+                "bulk_prediction.html", model_ready=is_model_available(),
+                max_upload_mb=app.config["MAX_CONTENT_LENGTH"] // (1024 * 1024),
+                required_columns=REQUIRED_COLUMNS,
+            )
+        except Exception:
+            logger.exception("Universal churn prediction also failed")
+            flash(
+                f"Prediction failed: {telco_exc}. "
+                "If this is a non-Telco dataset, ensure it has a churn target column.",
+                "error"
+            )
+            return render_template(
+                "bulk_prediction.html", model_ready=is_model_available(),
+                max_upload_mb=app.config["MAX_CONTENT_LENGTH"] // (1024 * 1024),
+                required_columns=REQUIRED_COLUMNS,
+            )
+    except Exception:
         logger.exception("Unexpected error during bulk prediction")
-        flash(f"An unexpected error occurred during prediction: {exc}", "error")
-        return render_template("bulk_prediction.html", model_ready=is_model_available())
+        flash("Prediction could not be completed. Please verify the dataset and try again.", "error")
+        return render_template(
+            "bulk_prediction.html", model_ready=is_model_available(),
+            max_upload_mb=app.config["MAX_CONTENT_LENGTH"] // (1024 * 1024),
+            required_columns=REQUIRED_COLUMNS,
+        )
+
+
+@app.route("/bulk-prediction/validate", methods=["POST"])
+def validate_bulk_prediction():
+    """Validate and profile a CSV. Accepts any CSV or ZIP — falls back to universal engine if not Telco."""
+    file_obj = request.files.get("customer_csv")
+    if file_obj is None or not getattr(file_obj, "filename", ""):
+        return jsonify({"error": "Please select a CSV file before continuing."}), 400
+    try:
+        raw = file_obj.read()
+        filename = file_obj.filename
+
+        # Auto-extract CSV from ZIP files
+        if filename.lower().endswith('.zip'):
+            import zipfile, io as _io
+            try:
+                zf = zipfile.ZipFile(_io.BytesIO(raw))
+                csv_files = [f for f in zf.namelist() if f.lower().endswith('.csv')]
+                if not csv_files:
+                    return jsonify({"error": "The ZIP file does not contain any CSV files."}), 400
+                raw = zf.read(csv_files[0])
+                filename = csv_files[0]
+            except zipfile.BadZipFile:
+                return jsonify({"error": "The uploaded file is not a valid ZIP file."}), 400
+
+        # Try Telco validation first
+        telco_error = None
+        profile = None
+        try:
+            profile = inspect_bulk_prediction_bytes(raw, filename)
+        except BulkPredictionError as exc:
+            telco_error = str(exc)
+
+        # If Telco validation succeeded and passed, use Telco engine
+        if profile and profile.get("valid"):
+            profile["engine"] = "telco"
+            return jsonify(profile), 200
+
+        # Telco failed — try universal engine
+        from utils.universal_churn import detect_target_column, UniversalChurnError
+        import pandas as pd, io
+
+        try:
+            df = None
+            for encoding in ["utf-8-sig", "utf-8", "latin1", "cp1252"]:
+                try:
+                    df = pd.read_csv(io.BytesIO(raw), encoding=encoding, keep_default_na=False, na_values=[])
+                    break
+                except Exception:
+                    continue
+
+            if df is None or df.empty:
+                error = telco_error or "The uploaded CSV is empty or could not be read."
+                return jsonify({"error": error}), 400
+
+            # Count truly missing values: only NaN cells (not empty strings,
+            # which are often semantically valid like "no churn reason" for retained customers).
+            # With keep_default_na=False + na_values=[], NaN only appears from explicit CSV "NaN" markers.
+            missing_count = int(df.isna().sum().sum())
+
+            target_col, _ = detect_target_column(df)
+
+            # Build profile for universal engine
+            preview = df.head(5).copy()
+            preview = preview.astype(object).where(pd.notna(preview), None)
+
+            heuristic_mode = target_col is None
+            universal_profile = {
+                "filename": os.path.basename(filename),
+                "rows": int(len(df)),
+                "columns": int(len(df.columns)),
+                "column_names": [str(c) for c in df.columns],
+                "missing_values": missing_count,
+                "duplicate_rows": int(df.duplicated().sum()),
+                "required_columns": [],
+                "missing_columns": [],
+                "valid": True,
+                "engine": "universal",
+                "target_column": target_col,
+                "heuristic_mode": heuristic_mode,
+                "heuristic_note": "No churn label column found — churn risk will be estimated using feature-based heuristics." if heuristic_mode else None,
+                "preview_columns": [str(c) for c in preview.columns],
+                "preview_rows": preview.to_dict("records"),
+            }
+            return jsonify(universal_profile), 200
+
+        except (UniversalChurnError, Exception) as uni_exc:
+            logger.warning("Universal engine failed: %s", uni_exc)
+            try:
+                import pandas as pd, io
+                df_debug = pd.read_csv(io.BytesIO(raw))
+                logger.warning("Dataset columns: %s", list(df_debug.columns))
+                logger.warning("Dataset shape: %s", df_debug.shape)
+            except Exception:
+                pass
+            error = str(uni_exc) if "churn" in str(uni_exc).lower() else (
+                telco_error or "Dataset could not be validated. Ensure it has a churn target column (e.g. 'Churn', 'Exited', 'Attrition')."
+            )
+            return jsonify({"error": error}), 422
+
+    except Exception:
+        logger.exception("Dataset validation failed")
+        return jsonify({"error": "Dataset validation could not be completed. Check the CSV and try again."}), 500
 
 
 @app.route("/bulk-prediction/sample", methods=["POST"])
@@ -552,11 +767,19 @@ def bulk_prediction_sample():
         return _render_bulk_results(bundle)
     except BulkPredictionError as exc:
         flash(str(exc), "error")
-        return render_template("bulk_prediction.html", model_ready=is_model_available())
-    except Exception as exc:
+        return render_template(
+            "bulk_prediction.html", model_ready=is_model_available(),
+            max_upload_mb=app.config["MAX_CONTENT_LENGTH"] // (1024 * 1024),
+            required_columns=REQUIRED_COLUMNS,
+        )
+    except Exception:
         logger.exception("Unexpected error during sample bulk prediction")
-        flash(f"An error occurred while scoring sample customers: {exc}", "error")
-        return render_template("bulk_prediction.html", model_ready=is_model_available())
+        flash("The sample prediction could not be completed. Please try again.", "error")
+        return render_template(
+            "bulk_prediction.html", model_ready=is_model_available(),
+            max_upload_mb=app.config["MAX_CONTENT_LENGTH"] // (1024 * 1024),
+            required_columns=REQUIRED_COLUMNS,
+        )
 
 
 # ---------------------------------------------------------------------------
@@ -600,6 +823,7 @@ def prediction_dashboard():
                 "prediction_dashboard.html",
                 kpis=None,
                 generated_at=None,
+                model_ready=is_model_available(),
             )
 
         kpis = compute_dashboard_kpis(bundle["results_df"])
@@ -612,14 +836,42 @@ def prediction_dashboard():
             "prediction_dashboard.html",
             kpis=kpis,
             top_risk=top_risk,
+            dashboard_data=build_dashboard_page(bundle),
             generated_at=generated_at,
             download_filename=download_filename,
             run_id=run_id,
+            model_ready=is_model_available(),
         )
-    except Exception as exc:
+    except Exception:
         logger.exception("Error loading prediction dashboard")
-        flash(f"Could not load prediction dashboard: {exc}", "error")
+        flash("The prediction dashboard could not be loaded. Please run the prediction again.", "error")
         return redirect(url_for("bulk_prediction"))
+
+
+@app.route("/dashboard/data")
+def prediction_dashboard_data():
+    """Filtered dashboard data and exact customer lookup for the interactive UI."""
+    try:
+        bundle, _, _ = _load_run_bundle(request.args.get("run"))
+        if bundle is None:
+            return jsonify({"error": "Prediction data is not available."}), 404
+        customer_id = (request.args.get("customer_id") or "").strip()
+        if customer_id:
+            customer = build_customer_detail(bundle, customer_id)
+            if customer is None:
+                return jsonify({"error": "Customer not found. Please check the Customer ID."}), 404
+            return jsonify({"customer": customer})
+        return jsonify(build_dashboard_page(
+            bundle,
+            risk=request.args.get("risk", "All"),
+            prediction=request.args.get("prediction", "All"),
+            contract=request.args.get("contract", "All"),
+            search=(request.args.get("search") or "").strip(),
+            page=request.args.get("page", 1, type=int) or 1,
+        ))
+    except Exception:
+        logger.exception("Dashboard data request failed")
+        return jsonify({"error": "Dashboard data could not be loaded. Please try again."}), 500
 
 
 # ---------------------------------------------------------------------------
@@ -656,13 +908,16 @@ def review_dashboard(filename):
             "prediction_dashboard.html",
             kpis=kpis,
             top_risk=top_risk,
+            dashboard_data=build_dashboard_page(bundle),
             generated_at=generated_at,
             download_filename=filename,
+            run_id=run_id,
             historical_dashboard=True,
+            model_ready=is_model_available(),
         )
-    except Exception as exc:
+    except Exception:
         logger.exception("Error loading historical review dashboard")
-        flash(f"Could not load review dashboard: {exc}", "error")
+        flash("This prediction dashboard could not be loaded.", "error")
         return redirect(url_for("reports"))
 
 
