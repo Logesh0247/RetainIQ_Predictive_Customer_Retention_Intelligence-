@@ -4,6 +4,7 @@ app.py
 RetainIQ -- Customer Churn Prediction & Retention Intelligence Platform.
 """
 
+import io
 import os
 import re
 import secrets
@@ -36,6 +37,7 @@ from utils.bulk_prediction import (
     BulkPredictionError,
     MAX_DISPLAY_ROWS,
     REPORTS_DIR,
+    UPLOADS_DIR,
 )
 from utils.recommendation import generate_recommendation
 from utils.universal_churn import run_universal_churn, UniversalChurnError
@@ -223,22 +225,11 @@ RUNS_COOKIE = "retainiq_runs"
 VISITOR_ID_RE = re.compile(r"^[A-Za-z0-9_-]{16,64}$")
 RUN_ID_RE = re.compile(r"^[0-9]{8}_[0-9]{6}_[0-9a-f]{16}$")
 
-app.config["UPLOAD_FOLDER"] = os.path.join(
-    BASE_DIR,
-    "uploads"
-)
-
+# UPLOADS_DIR / REPORTS_DIR already resolve to a writable location (they fall
+# back to a temp directory on hosts with a read-only application filesystem),
+# so the app boots even where it cannot write next to the source code.
+app.config["UPLOAD_FOLDER"] = UPLOADS_DIR
 app.config["REPORTS_FOLDER"] = REPORTS_DIR
-
-os.makedirs(
-    app.config["UPLOAD_FOLDER"],
-    exist_ok=True
-)
-
-os.makedirs(
-    app.config["REPORTS_FOLDER"],
-    exist_ok=True
-)
 
 logging.basicConfig(level=logging.INFO)
 
@@ -382,10 +373,13 @@ def _owns_report(filename):
 
 
 def _bundle_from_run(run_id):
-    folder = _run_folder(run_id)
-    if not folder:
+    if not run_id or not RUN_ID_RE.match(str(run_id)):
         return None, None, None
-    bundle = load_bundle_cache(os.path.join(folder, f".cache_{run_id}.pkl"))
+    folder = _run_folder(run_id) or os.path.join(_runs_root(), run_id)
+    # When the folder is gone (ephemeral disk on a hosted instance, restart,
+    # scale event) load_bundle_cache still falls back to the in-memory cache.
+    cache_path = os.path.join(folder, f".cache_{run_id}.pkl")
+    bundle = load_bundle_cache(cache_path)
     if bundle is None:
         return None, None, None
     return bundle, _csv_name(run_id), run_id
@@ -791,21 +785,33 @@ def download_results(filename):
     filename = os.path.basename(filename)
     run_id = (request.args.get("run") or "").strip() or _run_id_from_filename(filename)
     folder = _run_folder(run_id)
-    if not folder:
-        abort(404)
 
-    safe_path = os.path.join(folder, filename)
-    if not os.path.isfile(safe_path):
-        csvs = [name for name in os.listdir(folder) if name.lower().endswith(".csv")]
-        if not csvs:
-            abort(404)
-        filename = csvs[0]
+    if folder:
         safe_path = os.path.join(folder, filename)
+        if os.path.isfile(safe_path):
+            return send_file(safe_path, as_attachment=True, download_name=filename)
+        csvs = [name for name in os.listdir(folder) if name.lower().endswith(".csv")]
+        if csvs:
+            filename = csvs[0]
+            return send_file(
+                os.path.join(folder, filename),
+                as_attachment=True,
+                download_name=filename,
+            )
 
+    # Disk copy is gone (restart / ephemeral filesystem): rebuild the CSV from
+    # the cached run instead of returning a 404 the user cannot recover from.
+    bundle, csv_name, resolved_run = _bundle_from_run(run_id)
+    if bundle is None:
+        abort(404)
+    buffer = io.BytesIO()
+    bundle["results_df"].to_csv(buffer, index=False)
+    buffer.seek(0)
     return send_file(
-        safe_path,
+        buffer,
+        mimetype="text/csv",
         as_attachment=True,
-        download_name=filename
+        download_name=csv_name or filename,
     )
 
 

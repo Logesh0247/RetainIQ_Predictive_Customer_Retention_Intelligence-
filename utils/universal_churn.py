@@ -264,11 +264,14 @@ def _is_negative_direction(feature_name):
 
 
 def _humanize_feature_name(name):
+    name = str(name or "").strip()
+    if not name:
+        return "this attribute"
     if "_" in name:
-        parts = name.split("_")
+        parts = [part for part in name.split("_") if part]
         if len(parts) >= 2 and parts[-1][0].islower():
             return f"{' '.join(parts[:-1])} ({parts[-1]})"
-    return name.replace("_", " ").title()
+    return name.replace("_", " ").title() or "this attribute"
 
 
 def _match_recommendation(feature_name, value, median, is_onehot):
@@ -305,6 +308,21 @@ def _match_recommendation(feature_name, value, median, is_onehot):
 
 
 def generate_universal_recommendations(row, probability, risk_level,
+                                        feature_values=None, feature_names=None,
+                                        feature_importances=None, feature_stats=None):
+    """Never raise: a broken feature name must not fail an entire scoring run."""
+    try:
+        return _generate_universal_recommendations(
+            row, probability, risk_level,
+            feature_values=feature_values, feature_names=feature_names,
+            feature_importances=feature_importances, feature_stats=feature_stats,
+        )
+    except Exception as exc:  # pragma: no cover - defensive
+        logger.warning("Recommendation generation fell back to generic advice: %s", exc)
+        return _generic_recommendations(risk_level)
+
+
+def _generate_universal_recommendations(row, probability, risk_level,
                                         feature_values=None, feature_names=None,
                                         feature_importances=None, feature_stats=None):
     if feature_values is None or feature_names is None or feature_importances is None:
