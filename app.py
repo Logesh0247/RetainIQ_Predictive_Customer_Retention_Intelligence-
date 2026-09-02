@@ -220,7 +220,7 @@ def _owned_run_ids():
 def _remember_run(run_id, csv_filename, cache_path):
     session["latest_bundle_path"] = cache_path
     session["latest_results_filename"] = csv_filename
-    session["latest_results_generated_at"] = datetime.now().strftime("%d %b %Y, %I:%M %p")
+    session["latest_results_generated_at"] = datetime.now().strftime("%d %b %Y")
     owned = _owned_run_ids()
     if run_id not in owned:
         owned.append(run_id)
@@ -644,7 +644,7 @@ def prediction_dashboard():
         top_risk = build_top_risk_records(bundle)
         generated_at = session.get("latest_results_generated_at")
         if not generated_at and run_id:
-            generated_at = run_id.replace("_", " ")
+            generated_at = datetime.strptime(run_id[:8], "%Y%m%d").strftime("%d %b %Y")
 
         return render_template(
             "prediction_dashboard.html",
@@ -716,7 +716,7 @@ def review_dashboard(filename):
         if report_path and os.path.exists(report_path):
             generated_at = datetime.fromtimestamp(
                 os.path.getmtime(report_path)
-            ).strftime("%d %b %Y, %I:%M %p")
+            ).strftime("%d %b %Y")
 
         return render_template(
             "prediction_dashboard.html",
