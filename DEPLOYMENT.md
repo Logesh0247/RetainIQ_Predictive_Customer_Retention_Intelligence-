@@ -31,6 +31,8 @@ Key settings (all overridable with environment variables):
 | --- | --- |
 | `RETAINIQ_SECRET_KEY` | Flask session signing key. **Set this in production**; otherwise sessions reset on every redeploy. |
 | `RETAINIQ_DATA_DIR` | Optional writable directory for generated reports/uploads (use it when a persistent disk is mounted, e.g. `/var/data`). |
+| `RETAINIQ_MAX_UPLOAD_MB` | Max upload size in MB. Default `250`. Raise it (e.g. `500`) if you need to score files larger than 250 MB, but keep the instance memory in mind — see `RETAINIQ_MAX_ROWS`. |
+| `RETAINIQ_MAX_ROWS` | Max customer rows accepted per upload (Telco and universal engines). Default `250000`. Lower it to avoid memory pressure on small instances. |
 | `WEB_CONCURRENCY`, `GUNICORN_TIMEOUT`, `GUNICORN_THREADS` | gunicorn tuning, see above. |
 
 ## Runtime storage

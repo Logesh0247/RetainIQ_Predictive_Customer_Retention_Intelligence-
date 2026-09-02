@@ -53,6 +53,15 @@ from utils.universal_churn import run_universal_churn, UniversalChurnError
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 
+
+def _int_env(name, default):
+    """Read an integer from the environment, falling back to ``default``."""
+    try:
+        return int(os.environ.get(name, default))
+    except (TypeError, ValueError):
+        return default
+
+
 app = Flask(__name__)
 app.wsgi_app = ProxyFix(app.wsgi_app, x_for=1, x_proto=1, x_host=1)
 
@@ -61,7 +70,11 @@ app.secret_key = os.environ.get(
     "retainiq-dev-secret-change-me"
 )
 
-app.config["MAX_CONTENT_LENGTH"] = 10 * 1024 * 1024
+# Maximum upload size (bytes). Defaults to 250 MB, but can be raised (or lowered)
+# at deploy time via RETAINIQ_MAX_UPLOAD_MB (e.g. "500" for 500 MB).
+MAX_UPLOAD_MB = _int_env("RETAINIQ_MAX_UPLOAD_MB", 250)
+MAX_UPLOAD_MB = max(1, MAX_UPLOAD_MB)
+app.config["MAX_CONTENT_LENGTH"] = MAX_UPLOAD_MB * 1024 * 1024
 app.config["SESSION_COOKIE_NAME"] = "retainiq_session"
 app.config["SESSION_COOKIE_HTTPONLY"] = True
 app.config["SESSION_COOKIE_PATH"] = "/"
@@ -102,7 +115,7 @@ def too_large(e):
     return render_template(
         "error.html",
         code=413,
-        message="The uploaded file is too large (max 10 MB)."
+        message=f"The uploaded file is too large (max {MAX_UPLOAD_MB} MB)."
     ), 413
 
 

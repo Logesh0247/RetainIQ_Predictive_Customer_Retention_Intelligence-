@@ -77,7 +77,7 @@ src.preprocessing  ──► 30 one-hot + numeric columns
 models/best_model.pkl   (RandomForestClassifier, 200 trees)
       │
       ├── utils.prediction     single score + SHAP top drivers
-      ├── utils.bulk_prediction  CSV ≤20k rows, KPIs, pickle cache
+      ├── utils.bulk_prediction  CSV ≤250k rows, KPIs, pickle cache
       └── utils.recommendation  if/else business rules
       │
       ▼
@@ -140,7 +140,7 @@ README mentions engineered fields (`Revenue Per Month`, `Customer Value`, `Servi
 
 - **Home** — model online/offline, capability cards  
 - **Single prediction** — 3-step CSS wizard (profile → services → billing)  
-- **Bulk prediction** — CSV upload, 10 MB cap, 20k row cap  
+- **Bulk prediction** — CSV upload, 250 MB cap (configurable via `RETAINIQ_MAX_UPLOAD_MB`), 250k row cap (configurable via `RETAINIQ_MAX_ROWS`)  
 - **Dashboard** — KPIs, risk mix, top-10 with SHAP + recs (session + pickle cache)  
 - **Reports** — historical CSVs + “review” if `.cache_*.pkl` exists  
 - **About** — product narrative  

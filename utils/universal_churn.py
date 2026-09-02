@@ -3,6 +3,7 @@ Universal Churn Prediction Engine — accepts any CSV with a churn target column
 Auto-detects schema, trains a GradientBoosting model on-the-fly.
 """
 import logging
+import os
 import re
 import warnings
 import pandas as pd
@@ -16,6 +17,19 @@ from sklearn.preprocessing import LabelEncoder
 from utils.prediction import calculate_risk_level
 
 logger = logging.getLogger("retainiq")
+
+
+def _int_env(name, default):
+    """Read an integer from the environment, falling back to ``default``."""
+    try:
+        return int(os.environ.get(name, default))
+    except (TypeError, ValueError):
+        return default
+
+
+# Row guard for the universal engine (matches the bulk Telco engine's raised cap).
+# Tune at deploy time via RETAINIQ_MAX_ROWS.
+MAX_ROWS = _int_env("RETAINIQ_MAX_ROWS", 250000)
 
 CHURN_TARGET_PATTERNS = [
     r'churn', r'churned', r'cancelled', r'canceled', r'left', r'exited', r'exit',
@@ -416,8 +430,8 @@ def run_universal_churn(file_storage):
         df = pd.read_csv(file_storage, keep_default_na=False, na_values=[])
         if df.empty:
             raise UniversalChurnError("The uploaded CSV is empty.")
-        if len(df) > 100000:
-            raise UniversalChurnError(f"The uploaded CSV has too many rows ({len(df):,}). Maximum is 100,000.")
+        if len(df) > MAX_ROWS:
+            raise UniversalChurnError(f"The uploaded CSV has too many rows ({len(df):,}). Maximum is {MAX_ROWS:,}.")
 
         target_col, is_binary = detect_target_column(df)
 
