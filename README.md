@@ -1,4 +1,4 @@
-# RetainIQ — Predictive Customer Retention Intelligence Platform
+# RetainIQ — Signal Ops Console
 
 <p align="center">
 
@@ -6,11 +6,7 @@
 
 </p>
 
-<p align="center">
-
-[Live Application](https://retainiq-predictive-customer-retention-zq6x.onrender.com)
-
-</p>
+Live Application : https://retainiq-predictive-customer-retention-zq6x.onrender.com
 
 ---
 
