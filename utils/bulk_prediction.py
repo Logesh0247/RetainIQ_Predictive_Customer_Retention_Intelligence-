@@ -28,7 +28,19 @@ from utils.recommendation import (
 
 logger = logging.getLogger("retainiq")
 ALLOWED_EXTENSIONS = {"csv"}
-MAX_ROWS = 20000
+
+
+def _int_env(name, default):
+    """Read an integer from the environment, falling back to ``default``."""
+    try:
+        return int(os.environ.get(name, default))
+    except (TypeError, ValueError):
+        return default
+
+
+# Row guard: a 250 MB CSV can hold far more customers than the old 20k cap, so
+# raise it substantially. Can be tuned at deploy time via RETAINIQ_MAX_ROWS.
+MAX_ROWS = _int_env("RETAINIQ_MAX_ROWS", 250000)
 TOP_N_WITH_DRIVERS = 10
 MAX_DISPLAY_ROWS = 150
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
